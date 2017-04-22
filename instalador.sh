@@ -84,11 +84,33 @@ guardar_config()
 
 obtener_datos_del_usuario()
 {
+    i=0
+
     # por cada directorio solicita al usuario ingresar un path
     for d in "${DIRECTORIOS[@]}"; do
-        solicitar_directorio $d ${!d} $d
+        repetir=0
+        while [ $repetir -eq 0 ]; do
+            solicitar_directorio $d ${!d} nuevo
+
+            # verifica que el directorio no haya sido ingresado anteriormente
+            repetir=1
+            for d2 in "${DIRECTORIOS[@]:0:$i}"; do
+                if [ "${!d2}" == "$nuevo" ]; then
+                    echo "ese directorio ya fue elegido para '$d2'"
+                    repetir=0  # volver a solicitar el ingreso
+                    break
+                fi
+            done
+        done
+
+        # guarda el nuevo valor en la variable
+        eval "$d=$nuevo"
+
+        # incrementa el contador
+        i=$(( $i + 1 ))
     done
 }
+
 
 # listado de directorios a solicitar
 DIRECTORIOS=(
