@@ -23,7 +23,7 @@ DIRECTORIOS=(
 mostrar_ayuda()
 {
     echo "Uso: ./`basename "$0"` [-ti]"
-    echo 'Realiza la instalción del paquete'
+    echo 'Realiza la instalación del paquete'
     echo
     echo '  -h, --help     muestra este mensaje y termina el programa'
     echo '  -t             imprime la configuración actual y termina el programa sin realizar cambios'
@@ -42,10 +42,7 @@ inicializar_var_directorios()
         eval "$d=$DIR_BASE/$d"
     done
 
-    # carga el archivo de configuración
-    if [ -f "$ARCHIVO_CONF" ] ; then
-        source $ARCHIVO_CONF
-    fi
+    cargar_config
 }
 
 solicitar_directorio()
@@ -108,6 +105,14 @@ guardar_config()
     for i in "${DIRECTORIOS[@]}"; do
         echo "$i=${!i}" >> $ARCHIVO_CONF
     done
+}
+
+cargar_config()
+{
+    # carga el archivo de configuración
+    if [ -f "$ARCHIVO_CONF" ] ; then
+        source $ARCHIVO_CONF
+    fi
 }
 
 obtener_datos_del_usuario()
