@@ -8,6 +8,18 @@ ARCHIVO_CONF="$DIR_CONF/instalador.conf"
 ARCHIVO_LOG="$DIR_CONF/instalador.log"  # este log es independiente del ingresado por el usuario
 DIR_BASE='./Grupo02'
 
+# listado de directorios a solicitar
+DIRECTORIOS=(
+    binarios
+    maestros
+    novedades
+    aceptados
+    rechazados
+    validados
+    reportes
+    logs
+)
+
 mostrar_ayuda()
 {
     echo "Uso: ./`basename "$0"` [-ti]"
@@ -18,6 +30,22 @@ mostrar_ayuda()
     echo '  -i             reinstala el paquete (o lo instala si aún no se hizo)'
     echo
     echo "Todos los archivos se crearán en el directorio $DIR_BASE"
+}
+
+inicializar_var_directorios()
+{
+    # inicializa las variables donde se van a guardar los directorios ingresados por el usuario
+    # toma los valores de DIRECTORIOS e inicializa cada valor con DIR_BASE/<nombre directorio>
+    # si había valores previos en el archivo de configuración, utiliza esos
+
+    for d in "${DIRECTORIOS[@]}"; do
+        eval "$d=$DIR_BASE/$d"
+    done
+
+    # carga el archivo de configuración
+    if [ -f "$ARCHIVO_CONF" ] ; then
+        source $ARCHIVO_CONF
+    fi
 }
 
 solicitar_directorio()
@@ -112,28 +140,6 @@ obtener_datos_del_usuario()
 }
 
 
-# listado de directorios a solicitar
-DIRECTORIOS=(
-    binarios
-    maestros
-    novedades
-    aceptados
-    rechazados
-    validados
-    reportes
-    logs
-)
-
-# crea la variable para cada directorio y con los valores por defecto
-for d in "${DIRECTORIOS[@]}"; do
-    eval "$d=$DIR_BASE/$d"
-done
-
-# carga el archivo de configuración
-if [ -f "$ARCHIVO_CONF" ] ; then
-    source $ARCHIVO_CONF
-fi
-
 verificar_instalacion=0 # flag
 
 # manejo de los parametros de entrada
@@ -156,10 +162,14 @@ if [ "$verificar_instalacion" -eq 1 ] ; then
     exit 0
 fi
 
+# verifica las dependencias
 if ! ./dependencias.sh ; then
     echo 'Las dependencias no se cumplieron, instalación abortada.'
     exit 1
 fi
+
+# crea la variable para cada directorio y con los valores por defecto/configurados
+inicializar_var_directorios
 
 # solicita al usuario los datos necesarios
 obtener_datos_del_usuario
@@ -170,7 +180,7 @@ done
 # se persiste la configuración en un archivo
 guardar_config
 
-# crear directorios
+# crea los directorios
 for d in "${DIRECTORIOS[@]}"; do
     path=${!d}
     echo "se crea el directorio de binarios en $path"
