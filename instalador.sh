@@ -137,6 +137,12 @@ obtener_datos_del_usuario()
         # incrementa el contador
         i=$(( $i + 1 ))
     done
+
+    # muestra los datos ingresados
+    echo 'Valores ingresados:'
+    for d in "${DIRECTORIOS[@]}"; do
+        echo "  $d: ${!d}"
+    done
 }
 
 
