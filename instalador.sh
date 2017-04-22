@@ -1,10 +1,11 @@
-#/bin/sh
+#!/bin/bash
 
 # terminar en caso de error
 set -e
 
 DIR_CONF='./dirconf'
-ARCHIVO_CONF="$DIR_CONF/config.sh"
+ARCHIVO_CONF="$DIR_CONF/instalador.conf"
+ARCHIVO_LOG="$DIR_CONF/instalador.log"  # este log es independiente del ingresado por el usuario
 DIR_BASE='./Grupo02'
 
 mostrar_ayuda()
@@ -50,7 +51,7 @@ solicitar_directorio()
         fi
 
         # verifica que el path ingresado por el usuario este dentro de DIR_BASE
-        if [[ ! "$rv" == `./canonicalizar.sh $DIR_BASE`* ]]; then
+        if [[ ! "$rv" == `./canonicalizar.sh $DIR_BASE`* ]] ; then
             echo "El directorio debe estar dentro de $DIR_BASE"
             continue
         fi
@@ -69,7 +70,16 @@ solicitar_directorio()
 
 guardar_config()
 {
-    valores_conf=(dir_inst dir_bins)
+    valores_conf=(
+        dir_bins
+        dir_maes
+        dir_nove
+        dir_acep
+        dir_rech
+        dir_vali
+        dir_repo
+        dir_logs
+    )
 
     if [ ! -d "$DIR_CONF" ]; then
         mkdir -p $DIR_CONF
@@ -85,13 +95,26 @@ guardar_config()
 
 obtener_datos_del_usuario()
 {
-    solicitar_directorio instalación $dir_inst dir_inst
     solicitar_directorio binarios $dir_bins dir_bins
+    solicitar_directorio maestros $dir_maes dir_maes
+    solicitar_directorio novedades $dir_nove dir_nove
+    solicitar_directorio aceptados $dir_acep dir_acep
+    solicitar_directorio rechazados $dir_rech dir_rech
+    solicitar_directorio validados $dir_vali dir_vali
+    solicitar_directorio reportes $dir_repo dir_repo
+    solicitar_directorio logs $dir_logs dir_logs
 }
 
 
-dir_inst=$DIR_BASE              # directorio de instalación
+# valores por defecto de directorios a definir por el usuario
 dir_bins="$DIR_BASE/bin"        # directorio de binarios
+dir_maes="$DIR_BASE/maestros"   # directorio de maestros
+dir_nove="$DIR_BASE/novedades"  # directorio de novedades
+dir_acep="$DIR_BASE/aceptados"  # directorio de aceptados
+dir_rech="$DIR_BASE/rechazados" # directorio de rechazados
+dir_vali="$DIR_BASE/validados"  # directorio de validados
+dir_repo="$DIR_BASE/reportes"   # directorio de reportes
+dir_logs="$DIR_BASE/logs"       # directorio de logs de comandos
 
 verificar_instalacion=0 # flag
 
@@ -130,11 +153,23 @@ until ./pregunta.sh "Desea proceder con la instalación?" ; do
     obtener_datos_del_usuario
 done
 
-# se periste la configuración en un archivo
+# se persiste la configuración en un archivo
 guardar_config
 
-echo "se crea el directorio de instalación en $dir_inst"
-mkdir -p $dir_inst
-
+# crear directorios
 echo "se crea el directorio de binarios en $dir_bins"
 mkdir -p $dir_bins
+echo "se crea el directorio de binarios en $dir_maes"
+mkdir -p $dir_maes
+echo "se crea el directorio de binarios en $dir_nove"
+mkdir -p $dir_nove
+echo "se crea el directorio de binarios en $dir_acep"
+mkdir -p $dir_acep
+echo "se crea el directorio de binarios en $dir_rech"
+mkdir -p $dir_rech
+echo "se crea el directorio de binarios en $dir_vali"
+mkdir -p $dir_vali
+echo "se crea el directorio de binarios en $dir_repo"
+mkdir -p $dir_repo
+echo "se crea el directorio de binarios en $dir_logs"
+mkdir -p $dir_logs

@@ -1,4 +1,4 @@
-#/bin/sh
+#!/bin/bash
 
 # este programa realiza una pregunta al usuario (que pueda responderse con si/no) hasta obtener
 # una respuesta valida, y retorna con 0 si la respuesta es afirmativa, o 1 si es negativa
