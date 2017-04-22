@@ -121,7 +121,7 @@ if [ "$verificar_instalacion" -eq 1 ] ; then
 fi
 
 if ! ./dependencias.sh ; then
-    echo 'Las dependencias no se encuentran instaladas, instalación abortada.'
+    echo 'Las dependencias no se cumplieron, instalación abortada.'
     exit 1
 fi
 
