@@ -80,12 +80,12 @@ verificarPermisos() {
     fi	
 }
 
-#iniciarDemonio() {                                                                                  VERIFICAR NOMBRE DEMONIO
-#	Demonio &
-#	processID=$(pgrep -x -n "Demonio")
-#	echo "Demonio corriendo bajo el id: $processID"
-#	echo "Para detener el proceso puede ejecutar el comando Stop_Demonio."                         #VERIFICAR
-#}
+iniciarDemonio() {                                                                                  #VERIFICAR NOMBRE DEMONIO
+	Demonio &
+	processID=$(pgrep -x -n "Demonio")
+	echo "Demonio corriendo bajo el id: $processID"
+	echo "Para detener el proceso puede ejecutar el comando Stop_Demonio."                         #VERIFICAR
+}
 
 
 #******************** EJECUCION ********************
