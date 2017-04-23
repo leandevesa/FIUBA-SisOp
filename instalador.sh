@@ -20,6 +20,10 @@ DIRECTORIOS=(
     logs
 )
 
+# incluye las funciones para manejar la config
+. ./config.sh
+
+
 mostrar_ayuda()
 {
     echo "Uso: ./`basename "$0"` [-ti]"
@@ -95,24 +99,34 @@ solicitar_directorio()
 
 guardar_config()
 {
+    # guarda los valores de las variables de los directorios (DIRECTORIOS) en el archivo de
+    # configuración
+
     if [ ! -d "$DIR_CONF" ]; then
         mkdir -p $DIR_CONF
     fi
 
-    echo '#!/bin/bash' > $ARCHIVO_CONF
-    echo '' >> $ARCHIVO_CONF
-
     for i in "${DIRECTORIOS[@]}"; do
-        echo "$i=${!i}" >> $ARCHIVO_CONF
+        config_set "$ARCHIVO_CONF" "$i" "${!i}"
     done
 }
 
 cargar_config()
 {
-    # carga el archivo de configuración
-    if [ -f "$ARCHIVO_CONF" ] ; then
-        source $ARCHIVO_CONF
+    # carga el archivo de configuración en las variables con los de los directorios (DIRECTORIOS)
+
+    if [ ! -f "$ARCHIVO_CONF" ] ; then
+        return 0
     fi
+
+    # carga los valores en las variables correspondientes
+    for i in "${DIRECTORIOS[@]}"; do
+        val_config=`config_get "$ARCHIVO_CONF" "$i"`
+        if [ -z "$val_config" ] ; then
+            continue
+        fi
+        eval "$i=$val_config"
+    done
 }
 
 obtener_datos_del_usuario()
@@ -160,6 +174,7 @@ while [ "$1" != "" ]; do
         -h | --help ) mostrar_ayuda;
                       exit 0;;
         *           ) echo "ERROR: parámetro invalido: $1";
+                      echo 'utilice -h o --help para obtener información sobre como utilizar el script';
                       exit 1;;
     esac
 
