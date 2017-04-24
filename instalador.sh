@@ -146,6 +146,14 @@ cargar_config()
     done
 }
 
+mostrar_config()
+{
+    echo 'Valores ingresados:'
+    for d in "${DIRECTORIOS[@]}"; do
+        echo "  $d: ${!d}"
+    done
+}
+
 obtener_datos_del_usuario()
 {
     i=0
@@ -175,10 +183,7 @@ obtener_datos_del_usuario()
     done
 
     # muestra los datos ingresados
-    echo 'Valores ingresados:'
-    for d in "${DIRECTORIOS[@]}"; do
-        echo "  $d: ${!d}"
-    done
+    mostrar_config
 }
 
 
@@ -200,8 +205,11 @@ while [ "$1" != "" ]; do
 done
 
 if [ "$verificar_instalacion" -eq 1 ] ; then
+    cargar_config
+    mostrar_config
+
     # TODO: checkear instalación e imprimir el archivo de configuración
-    echo "IMPLEMENTAR"
+    echo "IMPLEMENTAR CHECKEO DE LA INSTALACION" > 2
     exit 0
 fi
 
