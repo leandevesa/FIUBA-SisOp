@@ -200,7 +200,7 @@ while [ "$1" != "" ]; do
         -t          ) verificar_instalacion=1;;
         -h | --help ) mostrar_ayuda;
                       exit 0;;
-        *           ) echo "ERROR: parámetro invalido: $1";
+        *           ) echo "ERROR: parámetro invalido: $1" >&2;
                       echo 'utilice -h o --help para obtener información sobre como utilizar el script';
                       exit 1;;
     esac
@@ -214,13 +214,13 @@ if [ "$verificar_instalacion" -eq 1 ] ; then
     mostrar_config
 
     # TODO: checkear instalación e imprimir el archivo de configuración
-    echo "IMPLEMENTAR CHECKEO DE LA INSTALACION" > 2
+    echo "IMPLEMENTAR CHECKEO DE LA INSTALACION" >&2
     exit 0
 fi
 
 # verifica las dependencias
 if ! ./dependencias.sh ; then
-    echo 'Las dependencias no se cumplieron, instalación abortada.'
+    echo 'Las dependencias no se cumplieron, instalación abortada.' >&2
     exit 1
 fi
 
