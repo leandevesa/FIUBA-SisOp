@@ -41,6 +41,13 @@ canonicalizar()
     readlink -m $1
 }
 
+mayuscula()
+{
+    # convierte a mayuscula $1
+
+    echo "$1" | awk '{ print toupper($0) }'
+}
+
 inicializar_var_directorios()
 {
     # inicializa las variables donde se van a guardar los directorios ingresados por el usuario
@@ -113,7 +120,7 @@ guardar_config()
     for i in "${DIRECTORIOS[@]}"; do
         # convierte los paths en absolutos
         valor=`canonicalizar ${!i}`
-        config_set "$ARCHIVO_CONF" "$i" "$valor"
+        config_set "$ARCHIVO_CONF" `mayuscula "$i"` "$valor"
     done
 }
 
@@ -127,7 +134,8 @@ cargar_config()
 
     # carga los valores en las variables correspondientes
     for i in "${DIRECTORIOS[@]}"; do
-        val_config=`config_get "$ARCHIVO_CONF" "$i"`
+        clave=`mayuscula "$i"`
+        val_config=`config_get "$ARCHIVO_CONF" "$clave"`
         if [ -z "$val_config" ] ; then
             continue
         fi
