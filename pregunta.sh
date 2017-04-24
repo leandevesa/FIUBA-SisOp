@@ -8,8 +8,7 @@ pregunta=$1
 finalizar=0
 
 while true; do
-    echo -n "$pregunta [s/n]: "
-    read respuesta
+    read -e -p "$pregunta [s/n]: " respuesta
 
     case "$respuesta" in
         s|y|si|yes|obvio ) exit 0;;

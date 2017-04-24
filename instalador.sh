@@ -63,8 +63,7 @@ solicitar_directorio()
     rv=""
 
     while true ; do
-        echo -n "ingrese el directorio de $tipo_dir [$default]: "
-        read rv
+        read -e -p "ingrese el directorio de $tipo_dir [$default]: " rv
 
         # utilizar el valor por defecto?
         if [ "$rv" == "" ] ; then
