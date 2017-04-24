@@ -3,10 +3,10 @@
 # terminar en caso de error
 set -e
 
-DIR_CONF='./dirconf'
+DIR_CONF='dirconf'
 ARCHIVO_CONF="$DIR_CONF/instalador.conf"
 ARCHIVO_LOG="$DIR_CONF/instalador.log"  # este log es independiente del ingresado por el usuario
-DIR_BASE='./Grupo02'
+DIR_BASE='Grupo02'
 
 # listado de directorios a solicitar
 DIRECTORIOS=(
@@ -111,7 +111,9 @@ guardar_config()
     fi
 
     for i in "${DIRECTORIOS[@]}"; do
-        config_set "$ARCHIVO_CONF" "$i" "${!i}"
+        # convierte los paths en absolutos
+        valor=`canonicalizar ${!i}`
+        config_set "$ARCHIVO_CONF" "$i" "$valor"
     done
 }
 
@@ -129,6 +131,9 @@ cargar_config()
         if [ -z "$val_config" ] ; then
             continue
         fi
+
+        # convierte los paths a relativos
+        val_config=`realpath --canonicalize-missing --relative-to=. $val_config`
         eval "$i=$val_config"
     done
 }
