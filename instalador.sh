@@ -3,6 +3,11 @@
 # terminar en caso de error
 set -e
 
+# permite la ejecución desde otros directorios
+if [ `pwd` != `dirname $0` ] ; then
+    cd `dirname $0`
+fi
+
 DIR_CONF='dirconf'
 ARCHIVO_CONF="$DIR_CONF/instalador.conf"
 ARCHIVO_LOG="$DIR_CONF/instalador.log"  # este log es independiente del ingresado por el usuario
