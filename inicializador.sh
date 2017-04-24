@@ -2,8 +2,8 @@
 
 #******************** FUNCIONES ********************
 
-# $1=valor, $2=nombre de la variable
-# valida si la variable tiene asignada algun valor, si no se termina el programa.}
+# $1 es el valor y $2 es el nombre de la variable
+# valida si la variable tiene asignada algun valor, si no se termina el programa.
 checkVar() {
 	if [ -z "$1" ] 
 	then 
@@ -12,8 +12,7 @@ checkVar() {
 	fi
 }
 
-# se toman los valores de las variables del archivo de configuracion
-# estan en el segundo campo y delimitados por "="
+# se toman los valores de las variables del archivo de configuracion que se encuentran definidos por "="
 setVariablesDeEntorno() {
     DIRBIN=$(grep '^DIRBIN' "$FILECONF" | cut -d "=" -f 2)
     DIRMAE=$(grep '^DIRMAE' "$FILECONF" | cut -d "=" -f 2)
@@ -94,13 +93,13 @@ iniciarDemonio() {                                                              
 DIRCONF=$(pwd)'/dirconf'
 FILECONF=$DIRCONF/instalador.conf #VERIFICAR NOMBRE
 
-#Valida que se haya ingresado un parámetro
+# valida que se haya ingresado un parámetro
 if [ "$FILECONF" = "" ] 
 then
 	echo "Debe indicar por parámetro un archivo de configuracion."
 	return 1
 
-#Valida que el archivo de configuracion tenga permiso de lectura
+# valida que el archivo de configuracion tenga permiso de lectura
 elif ! test -r "$FILECONF" 
 then
 	echo "El archivo no puede ser leído."
@@ -108,7 +107,7 @@ then
 fi
 
 
-#veo si ya fue iniciado el ambiente
+# veo si ya fue iniciado el ambiente
 if [ "$AMBIENTE_INICIALIZADO" = "true" ]
 then
 	echo "Ambiente ya inicializado, para reiniciar termine la sesión e ingrese nuevamente."
@@ -128,7 +127,7 @@ verificarVariables
 verificarPermisos
 resultado=$?
 if [ $resultado != 0 ]; then
-#se termina la ejecucion
+# se termina la ejecucion
 	echo "No se pueden dar los permisos a los archivos."
 else
 	echo "Ambiente Inicializado."
@@ -136,7 +135,7 @@ else
 export AMBIENTE_INICIALIZADO="true"
 echo "El sistema se ha iniciado correctamente."
 
-MSG="¿Desea activar el Demonio? s/n"
+echo "¿Desea activar el Demonio? s/n"
 read start
 if [ $start = "s" ]
 then
