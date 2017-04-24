@@ -36,6 +36,11 @@ mostrar_ayuda()
     echo "Todos los archivos se crearán en el directorio $DIR_BASE"
 }
 
+canonicalizar()
+{
+    readlink -m $1
+}
+
 inicializar_var_directorios()
 {
     # inicializa las variables donde se van a guardar los directorios ingresados por el usuario
@@ -71,15 +76,15 @@ solicitar_directorio()
         fi
 
         # canonicalize
-        rv=`./canonicalizar.sh $rv`
+        rv=`canonicalizar $rv`
 
-        if [ "$rv" == `./canonicalizar.sh DIR_CONF` ] ; then
+        if [ "$rv" == `canonicalizar DIR_CONF` ] ; then
             echo "$DIR_CONF es un directorio reservado, por favor elija uno distinto"
             continue
         fi
 
         # verifica que el path ingresado por el usuario este dentro de DIR_BASE
-        if [[ ! "$rv" == `./canonicalizar.sh $DIR_BASE`* ]] ; then
+        if [[ ! "$rv" == `canonicalizar $DIR_BASE`* ]] ; then
             echo "El directorio debe estar dentro de $DIR_BASE"
             continue
         fi
@@ -89,7 +94,7 @@ solicitar_directorio()
     done
 
     # convierte a path relativo
-    prefijo=`./canonicalizar.sh $DIR_BASE`
+    prefijo=`canonicalizar $DIR_BASE`
     rv=`echo $rv | sed s:$prefijo::`
 
     eval "$salida='${DIR_BASE}$rv'"
