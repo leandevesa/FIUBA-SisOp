@@ -3,6 +3,7 @@
 # inicia el daemon
 
 ARCHIVO_PID="pid"  # nombre del archivo donde se guarda el pid del daemon
+                   # TODO: cargarlo en una variable de entorno
 
 set -e
 
@@ -62,11 +63,13 @@ iniciar_daemon()
         error 'El demonio se encuentra activo'
     fi
 
+    script="`dirname $0`/daemon.sh"
+
     set +e
 
     # inicia el proceso en background
-    rv=nohup './daemon.sh &' &>/dev/null
-    if [ ! $rv ] ; then
+    nohup "$script &" &> /dev/null
+    if [ ! $? ] ; then
         error 'No se pudo inicializar el demonio'
     fi
 
@@ -74,7 +77,7 @@ iniciar_daemon()
 
     # obtiene y guarda el process ID
     pid=$!
-    cat $pid > $ARCHIVO_PID
+    echo $pid > $ARCHIVO_PID
 
     print "se inició el demonio con el pid $pid"
 }
@@ -85,9 +88,11 @@ detener_daemon()
         error 'El demonio no se encuentra activo'
     fi
 
-    if [ ! kill `cat $ARCHIVO_PID` ] ; then
+    if [ ! "kill `cat $ARCHIVO_PID`" ] ; then
         error 'No se pudo detener el demonio'
     fi
+
+    rm $ARCHIVO_PID
 }
 
 
