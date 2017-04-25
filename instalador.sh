@@ -26,7 +26,7 @@ DIRECTORIOS=(
 )
 
 # incluye las funciones para manejar la config
-. ./config.sh
+. ./libs/config.sh
 
 
 mostrar_ayuda()
@@ -216,6 +216,21 @@ obtener_datos_del_usuario()
     mostrar_config
 }
 
+inicializar_directorios()
+{
+    # crea los directorios y mueve los archivos
+    for d in "${DIRECTORIOS[@]}"; do
+        path=${!d}
+        print "se crea el directorio de binarios en $path"
+        mkdir -p $path
+
+        if [ -d "$d" ] ; then
+            print "copiando archivos a $path"
+            #mv "$d" "$path"
+        fi
+    done
+
+}
 
 verificar_instalacion=0 # flag
 
@@ -244,7 +259,7 @@ if [ "$verificar_instalacion" -eq 1 ] ; then
 fi
 
 # verifica las dependencias
-if ! ./dependencias.sh ; then
+if ! ./libs/dependencias.sh ; then
     error 'Las dependencias no se cumplieron, instalación abortada.' >&2
 fi
 
@@ -253,16 +268,11 @@ inicializar_var_directorios
 
 # solicita al usuario los datos necesarios
 obtener_datos_del_usuario
-until ./pregunta.sh "Desea proceder con la instalación?" ; do
+until ./libs/pregunta.sh "Desea proceder con la instalación?" ; do
     obtener_datos_del_usuario
 done
 
 # se persiste la configuración en un archivo
 guardar_config
 
-# crea los directorios
-for d in "${DIRECTORIOS[@]}"; do
-    path=${!d}
-    print "se crea el directorio de binarios en $path"
-    mkdir -p $path
-done
+inicializar_directorios
