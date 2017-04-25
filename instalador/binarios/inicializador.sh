@@ -33,7 +33,6 @@ setVariablesDeEntorno() {
 inicializarVariables() {
     PATH=$PATH:$DIRBIN
     export DIRBIN
-    env DIRBIN
     export DIRMAE
     export DIRREC
     export DIROK
