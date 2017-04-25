@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ./config.sh
+. ./libs/config.sh
 
 #******************** FUNCIONES ********************
 
@@ -16,14 +16,14 @@ checkVar() {
 
 # se toman los valores de las variables del archivo de configuracion que se encuentran definidos por "="
 setVariablesDeEntorno() {
-    DIRBIN=`config_get $DIRCONF BINARIOS`
-    DIRMAE=`config_get $DIRCONF MAESTROS`
-    DIRREC=`config_get $DIRCONF RECHAZADOS`
-    DIROK=`config_get $DIRCONF ACEPTADOS`
-    DIRPROC=`config_get $DIRCONF VALIDADOS`
-    DIRINFO=`config_get $DIRCONF REPORTES`
-    DIRLOG=`config_get $DIRCONF LOGS`
-    DIRNOV=`config_get $DIRCONF NOVEDADES`
+    DIRBIN=`config_get $FILECONF BINARIOS`
+    DIRMAE=`config_get $FILECONF MAESTROS`
+    DIRREC=`config_get $FILECONF RECHAZADOS`
+    DIROK=`config_get $FILECONF ACEPTADOS`
+    DIRPROC=`config_get $FILECONF VALIDADOS`
+    DIRINFO=`config_get $FILECONF REPORTES`
+    DIRLOG=`config_get $FILECONF LOGS`
+    DIRNOV=`config_get $FILECONF NOVEDADES`
 }
 
 # inicializo variables
@@ -40,15 +40,14 @@ inicializarVariables() {
 
 # chequeo si las variables fueron seteadas
 verificarVariables() {
-checkVar "$GRUPO" "GRUPO" || return 1
-checkVar "$DIRBIN" "DIRBIN" || return 1
-checkVar "$DIRMAE" "DIRMAE" || return 1
-checkVar "$DIRREC" "DIRREC" || return 1
-checkVar "$DIROK" "DIROK" || return 1
-checkVar "$DIRPROC" "DIRPROC" || return 1
-checkVar "$DIRINFO" "DIRINFO" || return 1
-checkVar "$DIRLOG" "DIRLOG" || return 1
-checkVar "$DIRNOV" "DIRNOV" || return 1
+    checkVar "$DIRBIN" "DIRBIN" || return 1
+    checkVar "$DIRMAE" "DIRMAE" || return 1
+    checkVar "$DIRREC" "DIRREC" || return 1
+    checkVar "$DIROK" "DIROK" || return 1
+    checkVar "$DIRPROC" "DIRPROC" || return 1
+    checkVar "$DIRINFO" "DIRINFO" || return 1
+    checkVar "$DIRLOG" "DIRLOG" || return 1
+    checkVar "$DIRNOV" "DIRNOV" || return 1
 }
 
 # verifico los permisos
@@ -56,8 +55,8 @@ checkVar "$DIRNOV" "DIRNOV" || return 1
 verificarPermisos() {
 
     permiso=0
-    cd $DIRBIN
-    for script in $DIRBIN/*; do
+
+    for script in "$DIRBIN/*"; do
 	    chmod +x "$script"
 
 		if [[ ! -x "$script" ]]; then
@@ -65,7 +64,7 @@ verificarPermisos() {
 		fi
     done
 
-    for file in $DIRMAE/*; do
+    for file in "$DIRMAE/*"; do
 		chmod u=rx "$file"
 		if [[ ! -r "$file" ]]; then
 		    let permiso+=1
@@ -90,20 +89,21 @@ iniciarDemonio() {                                                              
 #******************** EJECUCION ********************
 
 
-DIRCONF=$(pwd)'/dirconf'
-FILECONF=$DIRCONF/instalador.conf #VERIFICAR NOMBRE
+DIRCONF="`dirname $0`/../dirconf"  # TODO: usar variables setteadas por el instalador
+FILECONF="$DIRCONF/instalador.conf" #VERIFICAR NOMBRE
+LIBS="`dirname $0`/../libs"  # TODO: usar variables setteadas por el instalador
 
 # valida que se haya ingresado un parámetro
 if [ "$FILECONF" = "" ]
 then
 	echo "Debe indicar por parámetro un archivo de configuracion."
-	return 1
+	exit 1
 
 # valida que el archivo de configuracion tenga permiso de lectura
 elif ! test -r "$FILECONF"
 then
 	echo "El archivo no puede ser leído."
-	return 1
+	exit 1
 fi
 
 
@@ -111,7 +111,7 @@ fi
 if [ "$AMBIENTE_INICIALIZADO" = "true" ]
 then
 	echo "Ambiente ya inicializado, para reiniciar termine la sesión e ingrese nuevamente."
-	return 1 #retorna 1 para indicar error
+	exit 1 #retorna 1 para indicar error
 fi
 
 
@@ -121,7 +121,10 @@ inicializarVariables
 echo "Se setearon las variables de entorno."
 
 # chequeo variables
-verificarVariables
+if ! verificarVariables ; then
+    echo 'variables no incializadas'
+    exit 1
+fi
 
 # verifico permisos
 verificarPermisos
@@ -131,19 +134,17 @@ if [ $resultado != 0 ]; then
 	echo "No se pueden dar los permisos a los archivos."
 else
 	echo "Ambiente Inicializado."
+fi
 
 export AMBIENTE_INICIALIZADO="true"
 echo "El sistema se ha iniciado correctamente."
 
-echo "¿Desea activar el Demonio? s/n"
-read start
-if [ $start = "s" ]
+echo `realpath $LIBS/pregunta.sh`
+if "$LIBS/pregunta.sh" "¿Desea iniciar el Demonio?"
 then
 	echo "S: Iniciando Demonio."
 	iniciarDemonio
 else
 	echo "N: No se inicia el Demonio. Saliendo de la aplicación."
-	echo "Puede ejecutar el Demonio manualmente, ejecutando el comando ./Demonio"                        #VERIFICAR
+	echo "Puede ejecutar el Demonio manualmente, con el comando ./Demonio"                        #VERIFICAR
 fi
-
-
