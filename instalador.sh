@@ -1,7 +1,5 @@
 #!/bin/bash
 
-tar -xvzf instalador.tar.gz
-
 # terminar en caso de error
 set -e
 
@@ -10,10 +8,10 @@ if [ `pwd` != `dirname $0` ] ; then
     cd `dirname $0`
 fi
 
-DIR_BASE='Grupo02'
-DIR_CONF="$DIR_BASE/dirconf"
+DIR_CONF='dirconf'
 ARCHIVO_CONF="$DIR_CONF/instalador.conf"
 ARCHIVO_LOG="$DIR_CONF/instalador.log"  # este log es independiente del ingresado por el usuario
+DIR_BASE='Grupo02'
 
 # listado de directorios a solicitar
 DIRECTORIOS=(
@@ -223,6 +221,7 @@ inicializar_directorios()
     # crea los directorios y mueve los archivos
     for d in "${DIRECTORIOS[@]}"; do
         path=${!d}
+        print "se crea el directorio de binarios en $path"
 	mkdir -p $path
 
         if [ -d "$d" ] ; then
@@ -231,15 +230,13 @@ inicializar_directorios()
 		
 		for x in $pathentero; do
 		
+		    echo "copiando $x a $path"
 		    mv "$x" "$path"
-			#cp "$x" "$path"
 		done
         fi
     done
 
-	rm -rf "binarios"
 	mv "libs" "$DIR_BASE"
-	#cp  -r "libs" "$DIR_BASE"
 
 }
 
