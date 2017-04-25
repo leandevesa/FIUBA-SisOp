@@ -12,6 +12,8 @@ DIR_CONF='dirconf'
 ARCHIVO_CONF="$DIR_CONF/instalador.conf"
 ARCHIVO_LOG="$DIR_CONF/instalador.log"  # este log es independiente del ingresado por el usuario
 DIR_BASE='Grupo02'
+DIR_RECURSOS=instalador
+DIR_LIBS="$DIR_RECURSOS/libs"
 
 # listado de directorios a solicitar
 DIRECTORIOS=(
@@ -26,7 +28,7 @@ DIRECTORIOS=(
 )
 
 # incluye las funciones para manejar la config
-. ./libs/config.sh
+. $DIR_LIBS/config.sh
 
 
 mostrar_ayuda()
@@ -222,22 +224,14 @@ inicializar_directorios()
     for d in "${DIRECTORIOS[@]}"; do
         path=${!d}
         print "se crea el directorio de binarios en $path"
-	mkdir -p $path
+        mkdir -p $path
 
-        if [ -d "$d" ] ; then
-
-		pathentero=`canonicalizar ${d}`/*
-		
-		for x in $pathentero; do
-		
-		    echo "copiando $x a $path"
-		    mv "$x" "$path"
-		done
+        recurso="$DIR_RECURSOS/$d"
+        if [ -d $recurso ] ; then            
+            echo "copiando $d a $path"
+            cp -r "$recurso" "$path"
         fi
     done
-
-	mv "libs" "$DIR_BASE"
-
 }
 
 verificar_instalacion=0 # flag
@@ -267,7 +261,7 @@ if [ "$verificar_instalacion" -eq 1 ] ; then
 fi
 
 # verifica las dependencias
-if ! ./libs/dependencias.sh ; then
+if ! $DIR_LIBS/dependencias.sh ; then
     error 'Las dependencias no se cumplieron, instalación abortada.' >&2
 fi
 
@@ -276,7 +270,7 @@ inicializar_var_directorios
 
 # solicita al usuario los datos necesarios
 obtener_datos_del_usuario
-until ./libs/pregunta.sh "Desea proceder con la instalación?" ; do
+until $DIR_LIBS/pregunta.sh "Desea proceder con la instalación?" ; do
     obtener_datos_del_usuario
 done
 
