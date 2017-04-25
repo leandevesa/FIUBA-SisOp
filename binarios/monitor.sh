@@ -68,8 +68,8 @@ iniciar_daemon()
     set +e
 
     # inicia el proceso en background
-    nohup "$script &" &> /dev/null
-    if [ ! $? ] ; then
+    nohup $script &> /dev/null &
+    if [ ! $! ] ; then
         error 'No se pudo inicializar el demonio'
     fi
 
@@ -88,10 +88,16 @@ detener_daemon()
         error 'El demonio no se encuentra activo'
     fi
 
-    if [ ! "kill `cat $ARCHIVO_PID`" ] ; then
+    set +e
+    kill `cat $ARCHIVO_PID`
+
+    if [ ! "$?" ] ; then
         error 'No se pudo detener el demonio'
     fi
 
+    set -e
+
+    echo 'demonio detenido'
     rm $ARCHIVO_PID
 }
 
