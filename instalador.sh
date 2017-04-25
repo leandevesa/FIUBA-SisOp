@@ -10,10 +10,10 @@ fi
 
 DIR_CONF='dirconf'
 ARCHIVO_CONF="$DIR_CONF/instalador.conf"
-ARCHIVO_LOG="$DIR_CONF/instalador.log"  # este log es independiente del ingresado por el usuario
 DIR_BASE='Grupo02'
 DIR_RECURSOS=instalador
 DIR_LIBS="$DIR_RECURSOS/libs"
+ARCHIVO_LOG="$DIR_LIBS/log.sh"
 
 # listado de directorios a solicitar
 DIRECTORIOS=(
@@ -48,6 +48,7 @@ print()
     # muestra un mensaje obtenido en $1 por STDOUT
 
     mensaje=$1
+$ARCHIVO_LOG "Instalador" "Info" "$mensaje" "$DIR_CONF_ABSOLUTO"
     echo $mensaje
 }
 
@@ -64,6 +65,7 @@ error()
         rc=1
     fi
 
+    $ARCHIVO_LOG "Instalador" "Info" "$mensaje" "$DIR_CONF_ABSOLUTO"
     echo -e $mensaje >&2
     exit $rc
 }
@@ -227,12 +229,14 @@ inicializar_directorios()
         mkdir -p $path
 
         recurso="$DIR_RECURSOS/$d"
-        if [ -d $recurso ] ; then            
+        if [ -d $recurso ] ; then
             echo "copiando $d a $path"
             cp -r "$recurso" "$path"
         fi
     done
 }
+
+DIR_CONF_ABSOLUTO=`canonicalizar $DIR_CONF`
 
 verificar_instalacion=0 # flag
 
@@ -252,12 +256,23 @@ while [ "$1" != "" ]; do
 done
 
 if [ "$verificar_instalacion" -eq 1 ] ; then
-    cargar_config
-    mostrar_config
 
-    # TODO: checkear instalación e imprimir el archivo de configuración
-    echo "IMPLEMENTAR CHECKEO DE LA INSTALACION" >&2
-    exit 0
+	mensaje=''
+
+    	if [ ! -f "$ARCHIVO_CONF" ] 
+	then
+		mensaje="El paquete no ha sido instalado todavia"
+	else
+		mensaje="El paquete ya ha sido instalado"
+
+		cargar_config
+	    	mostrar_config
+	fi
+
+	echo "$mensaje"
+	$ARCHIVO_LOG "Instalador" "Info" "$mensaje" "$DIR_CONF_ABSOLUTO"
+
+	exit 0
 fi
 
 # verifica las dependencias
