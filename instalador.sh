@@ -175,7 +175,6 @@ cargar_config()
         fi
 
         # convierte los paths a relativos
-        val_config=`realpath --canonicalize-missing --relative-to=. $val_config`
         eval "$i=$val_config"
     done
 }
@@ -225,15 +224,17 @@ inicializar_directorios()
     # crea los directorios y mueve los archivos
     for d in "${DIRECTORIOS[@]}"; do
         path=${!d}
-        print "se crea el directorio de binarios en $path"
+        print "se crea el directorio de $d en $path"
         mkdir -p $path
 
         recurso="$DIR_RECURSOS/$d"
         if [ -d $recurso ] ; then
             echo "copiando $d a $path"
-            cp -r "$recurso" "$path"
+            cp -R "$recurso/." "$path/"
         fi
     done
+
+    cp -R "$DIR_LIBS" "$DIR_BASE"
 }
 
 DIR_CONF_ABSOLUTO=`canonicalizar $DIR_CONF`
@@ -295,5 +296,8 @@ guardar_config
 inicializar_directorios
 
 # voy al path de binarios para lanzar el inicializador.sh
-cd ${!DIRECTORIOS[0]}
-./inicializador.sh
+if $DIR_LIBS/pregunta.sh "Desea continuar con la incialización?"; then
+    path=$(canonicalizar $binarios)
+    cd $path
+    ./inicializador.sh
+fi
