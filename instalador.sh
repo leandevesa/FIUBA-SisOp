@@ -41,6 +41,31 @@ mostrar_ayuda()
     echo "Todos los archivos se crearán en el directorio $DIR_BASE"
 }
 
+print()
+{
+    # muestra un mensaje obtenido en $1 por STDOUT
+
+    mensaje=$1
+    echo $mensaje
+}
+
+error()
+{
+    # muestra un mensaje de error por STDERR y termina el programa
+    # $1 es el mensaje a mostrar
+    # $2 valor de retorno del programa (1 si no está presente)
+
+    mensaje=$1
+    rc=$2
+
+    if [ -z "$rc" ] ; then
+        rc=1
+    fi
+
+    echo -e $mensaje >&2
+    exit $rc
+}
+
 canonicalizar()
 {
     readlink -m $1
@@ -91,13 +116,13 @@ solicitar_directorio()
         rv=`canonicalizar $rv`
 
         if [ "$rv" == `canonicalizar DIR_CONF` ] ; then
-            echo "$DIR_CONF es un directorio reservado, por favor elija uno distinto"
+            print "$DIR_CONF es un directorio reservado, por favor elija uno distinto"
             continue
         fi
 
         # verifica que el path ingresado por el usuario este dentro de DIR_BASE
         if [[ ! "$rv" == `canonicalizar $DIR_BASE`* ]] ; then
-            echo "El directorio debe estar dentro de $DIR_BASE"
+            print "El directorio debe estar dentro de $DIR_BASE"
             continue
         fi
 
@@ -153,9 +178,9 @@ cargar_config()
 
 mostrar_config()
 {
-    echo 'Valores ingresados:'
+    print 'Valores ingresados:'
     for d in "${DIRECTORIOS[@]}"; do
-        echo "  $d: ${!d}"
+        print "  $d: ${!d}"
     done
 }
 
@@ -173,7 +198,7 @@ obtener_datos_del_usuario()
             repetir=1
             for d2 in "${DIRECTORIOS[@]:0:$i}"; do
                 if [ "${!d2}" == "$nuevo" ]; then
-                    echo "ese directorio ya fue elegido para '$d2'"
+                    print "ese directorio ya fue elegido para '$d2'"
                     repetir=0  # volver a solicitar el ingreso
                     break
                 fi
@@ -220,8 +245,7 @@ fi
 
 # verifica las dependencias
 if ! ./dependencias.sh ; then
-    echo 'Las dependencias no se cumplieron, instalación abortada.' >&2
-    exit 1
+    error 'Las dependencias no se cumplieron, instalación abortada.' >&2
 fi
 
 # crea la variable para cada directorio y con los valores por defecto/configurados
@@ -239,6 +263,6 @@ guardar_config
 # crea los directorios
 for d in "${DIRECTORIOS[@]}"; do
     path=${!d}
-    echo "se crea el directorio de binarios en $path"
+    print "se crea el directorio de binarios en $path"
     mkdir -p $path
 done
