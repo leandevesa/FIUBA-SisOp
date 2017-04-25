@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 
 # "$1" es lugar de invocacion

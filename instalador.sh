@@ -222,13 +222,21 @@ inicializar_directorios()
     for d in "${DIRECTORIOS[@]}"; do
         path=${!d}
         print "se crea el directorio de binarios en $path"
-        mkdir -p $path
+	mkdir -p $path
 
         if [ -d "$d" ] ; then
-            print "copiando archivos a $path"
-            #mv "$d" "$path"
+
+		pathentero=`canonicalizar ${d}`/*
+		
+		for x in $pathentero; do
+		
+		    echo "copiando $x a $path"
+		    mv "$x" "$path"
+		done
         fi
     done
+
+	mv "libs" "$DIR_BASE"
 
 }
 
@@ -276,3 +284,7 @@ done
 guardar_config
 
 inicializar_directorios
+
+# voy al path de binarios para lanzar el inicializador.sh
+cd ${!DIRECTORIOS[0]}
+./inicializador.sh

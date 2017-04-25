@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ./libs/config.sh
+../libs/config.sh
 
 #******************** FUNCIONES ********************
 
