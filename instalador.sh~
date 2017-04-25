@@ -237,7 +237,6 @@ inicializar_directorios()
         fi
     done
 
-	rm -rf "binarios"
 	mv "libs" "$DIR_BASE"
 	#cp  -r "libs" "$DIR_BASE"
 
