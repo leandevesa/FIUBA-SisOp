@@ -1,14 +1,10 @@
 #!/bin/bash
 
-. ../libs/config.sh
+set -e 
 
-directorioNovedades=`config_get ../dirconf/instalador.conf NOVEDADES`/
-directorioAceptados=`config_get ../dirconf/instalador.conf ACEPTADOS`/
-directorioRechazados=`config_get ../dirconf/instalador.conf RECHAZADOS`/
-
-#directorioNovedades="/home/nicolas/Escritorio/novedades/"
-#directorioAceptados="/home/nicolas/Escritorio/aceptados/"
-#directorioRechazados="/home/nicolas/Escritorio/rechazados/"
+directorioNovedades=$DIRNOV/
+directorioAceptados=$DIROK/
+directorioRechazados=$DIRREC/
 
 validarArchivo(){
 	

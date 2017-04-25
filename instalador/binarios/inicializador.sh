@@ -24,9 +24,6 @@ setVariablesDeEntorno() {
     DIRINFO=`config_get $FILECONF REPORTES`
     DIRLOG=`config_get $FILECONF LOGS`
     DIRNOV=`config_get $FILECONF NOVEDADES`
-    echo lalala
-    echo $DIRBIN
-    echo lalala
 }
 
 # inicializo variables
