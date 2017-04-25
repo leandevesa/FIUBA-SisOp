@@ -2,8 +2,7 @@
 
 # inicia el daemon
 
-ARCHIVO_PID="pid"  # nombre del archivo donde se guarda el pid del daemon
-                   # TODO: cargarlo en una variable de entorno
+ARCHIVO_PID="$DIRBIN/pid"  # nombre del archivo donde se guarda el pid del daemon
 
 set -e
 

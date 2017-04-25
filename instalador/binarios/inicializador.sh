@@ -24,11 +24,16 @@ setVariablesDeEntorno() {
     DIRINFO=`config_get $FILECONF REPORTES`
     DIRLOG=`config_get $FILECONF LOGS`
     DIRNOV=`config_get $FILECONF NOVEDADES`
+    echo lalala
+    echo $DIRBIN
+    echo lalala
 }
 
 # inicializo variables
 inicializarVariables() {
     PATH=$PATH:$DIRBIN
+    export DIRBIN
+    env DIRBIN
     export DIRMAE
     export DIRREC
     export DIROK
@@ -56,7 +61,7 @@ verificarPermisos() {
 
     permiso=0
 
-    for script in "$DIRBIN/*"; do
+    for script in $(ls $DIRMAE); do
 	    chmod +x "$script"
 
 		if [[ ! -x "$script" ]]; then
@@ -64,7 +69,7 @@ verificarPermisos() {
 		fi
     done
 
-    for file in "$DIRMAE/*"; do
+    for file in $(ls $DIRMAE); do
 		chmod u=rx "$file"
 		if [[ ! -r "$file" ]]; then
 		    let permiso+=1
@@ -89,7 +94,7 @@ iniciarDemonio() {                                                              
 #******************** EJECUCION ********************
 
 
-DIRCONF="`dirname $0`/../dirconf"  # TODO: usar variables setteadas por el instalador
+DIRCONF="`dirname $0`/../../dirconf"  # TODO: usar variables setteadas por el instalador
 FILECONF="$DIRCONF/instalador.conf" #VERIFICAR NOMBRE
 LIBS="`dirname $0`/../libs"  # TODO: usar variables setteadas por el instalador
 
@@ -139,7 +144,6 @@ fi
 export AMBIENTE_INICIALIZADO="true"
 echo "El sistema se ha iniciado correctamente."
 
-echo `realpath $LIBS/pregunta.sh`
 if "$LIBS/pregunta.sh" "¿Desea iniciar el Demonio?"
 then
 	echo "S: Iniciando Demonio."

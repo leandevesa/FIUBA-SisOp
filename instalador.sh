@@ -281,7 +281,7 @@ guardar_config
 inicializar_directorios
 
 # voy al path de binarios para lanzar el inicializador.sh
-if $DIR_LIBS/pregunta.sh "Desea iniciar el demonio?"; then
+if $DIR_LIBS/pregunta.sh "Desea continuar con la incialización?"; then
     path=$(canonicalizar $binarios)
     cd $path
     ./inicializador.sh
