@@ -25,7 +25,7 @@ logCarpeta=$4
 
 if [ -z "$logCarpeta" ]
 then
-	logCarpeta="logCarpeta"
+	logCarpeta="$DIRLOG"
 fi
 
 if ! [ -d "$logCarpeta" ]
