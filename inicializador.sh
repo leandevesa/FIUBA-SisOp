@@ -1,27 +1,29 @@
 #!/bin/bash
 
+. ./config.sh
+
 #******************** FUNCIONES ********************
 
 # $1 es el valor y $2 es el nombre de la variable
 # valida si la variable tiene asignada algun valor, si no se termina el programa.
 checkVar() {
-	if [ -z "$1" ] 
-	then 
-		echo "No se puede inicializar la variable $2." 
+	if [ -z "$1" ]
+	then
+		echo "No se puede inicializar la variable $2."
 		return 1
 	fi
 }
 
 # se toman los valores de las variables del archivo de configuracion que se encuentran definidos por "="
 setVariablesDeEntorno() {
-    DIRBIN=$(grep '^DIRBIN' "$FILECONF" | cut -d "=" -f 2)
-    DIRMAE=$(grep '^DIRMAE' "$FILECONF" | cut -d "=" -f 2)
-    DIRREC=$(grep '^DIRREC' "$FILECONF" | cut -d "=" -f 2)
-    DIROK=$(grep '^DIROK' "$FILECONF" | cut -d "=" -f 2)
-    DIRPROC=$(grep '^DIRPROC' "$FILECONF" | cut -d "=" -f 2)
-    DIRINFO=$(grep '^DIRINFO' "$FILECONF" | cut -d "=" -f 2)
-    DIRLOG=$(grep '^DIRLOG' "$FILECONF" | cut -d "=" -f 2)
-    DIRNOK=$(grep '^DIRNOK' "$FILECONF" | cut -d "=" -f 2)
+    DIRBIN=`config_get $DIRCONF BINARIOS`
+    DIRMAE=`config_get $DIRCONF MAESTROS`
+    DIRREC=`config_get $DIRCONF RECHAZADOS`
+    DIROK=`config_get $DIRCONF ACEPTADOS`
+    DIRPROC=`config_get $DIRCONF VALIDADOS`
+    DIRINFO=`config_get $DIRCONF REPORTES`
+    DIRLOG=`config_get $DIRCONF LOGS`
+    DIRNOV=`config_get $DIRCONF NOVEDADES`
 }
 
 # inicializo variables
@@ -33,7 +35,7 @@ inicializarVariables() {
     export DIRPROC
     export DIRINFO
     export DIRLOG
-    export DIRNOK
+    export DIRNOV
 }
 
 # chequeo si las variables fueron seteadas
@@ -46,7 +48,7 @@ checkVar "$DIROK" "DIROK" || return 1
 checkVar "$DIRPROC" "DIRPROC" || return 1
 checkVar "$DIRINFO" "DIRINFO" || return 1
 checkVar "$DIRLOG" "DIRLOG" || return 1
-checkVar "$DIRNOK" "DIRNOK" || return 1
+checkVar "$DIRNOV" "DIRNOV" || return 1
 }
 
 # verifico los permisos
@@ -57,7 +59,7 @@ verificarPermisos() {
     cd $DIRBIN
     for script in $DIRBIN/*; do
 	    chmod +x "$script"
-	    
+
 		if [[ ! -x "$script" ]]; then
 		    let permiso+=1
 		fi
@@ -76,14 +78,12 @@ verificarPermisos() {
     else
 		# los archivos no tienen permiso
 		return 1
-    fi	
+    fi
 }
 
 iniciarDemonio() {                                                                                  #VERIFICAR NOMBRE DEMONIO
-	Demonio &
-	processID=$(pgrep -x -n "Demonio")
-	echo "Demonio corriendo bajo el id: $processID"
-	echo "Para detener el proceso puede ejecutar el comando Stop_Demonio."                         #VERIFICAR
+    # llama al proceso que incia el demonio
+	${DIRBIN}/monitor.sh start
 }
 
 
@@ -94,13 +94,13 @@ DIRCONF=$(pwd)'/dirconf'
 FILECONF=$DIRCONF/instalador.conf #VERIFICAR NOMBRE
 
 # valida que se haya ingresado un parámetro
-if [ "$FILECONF" = "" ] 
+if [ "$FILECONF" = "" ]
 then
 	echo "Debe indicar por parámetro un archivo de configuracion."
 	return 1
 
 # valida que el archivo de configuracion tenga permiso de lectura
-elif ! test -r "$FILECONF" 
+elif ! test -r "$FILECONF"
 then
 	echo "El archivo no puede ser leído."
 	return 1
