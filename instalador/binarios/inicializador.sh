@@ -39,6 +39,7 @@ inicializarVariables() {
     export DIRNOV
 }
 
+
 # chequeo si las variables fueron seteadas
 verificarVariables() {
     checkVar "$DIRBIN" "DIRBIN" || return 1
@@ -58,53 +59,52 @@ verificarPermisos() {
     permiso=0
 
     for script in $(ls $DIRMAE); do
-	    chmod +x "$script"
+        chmod +x "$script"
 
-		if [[ ! -x "$script" ]]; then
-		    let permiso+=1
-		fi
+        if [[ ! -x "$script" ]]; then
+            let permiso+=1
+        fi
     done
 
     for file in $(ls $DIRMAE); do
-		chmod u=rx "$file"
-		if [[ ! -r "$file" ]]; then
-		    let permiso+=1
-		fi
+        chmod u=rx "$file"
+        if [[ ! -r "$file" ]]; then
+            let permiso+=1
+        fi
     done
 
     if [[ "$permiso" == 0 ]]; then
-		# los archivos tienen permiso
-		return 0
+        # los archivos tienen permiso
+        return 0
     else
-		# los archivos no tienen permiso
-		return 1
+        # los archivos no tienen permiso
+        return 1
     fi
 }
 
 iniciarDemonio() {                                                                                  #VERIFICAR NOMBRE DEMONIO
     # llama al proceso que incia el demonio
-	${DIRBIN}/monitor.sh start
+    ${DIRBIN}/monitor.sh start
 }
 
 
 #******************** EJECUCION ********************
-
 
 DIRCONF="`dirname $0`/../../dirconf"  # TODO: usar variables setteadas por el instalador
 FILECONF="$DIRCONF/instalador.conf" #VERIFICAR NOMBRE
 LIBS="`dirname $0`/../libs"  # TODO: usar variables setteadas por el instalador
 
 # valida que se haya ingresado un parámetro
-if [ "$FILECONF" = "" ]
+if [ "$FILECONF" == "" ]
 then
 	echo "Debe indicar por parámetro un archivo de configuracion."
-	exit 1
+	return 1
 
 # valida que el archivo de configuracion tenga permiso de lectura
 elif ! test -r "$FILECONF"
 then
 	echo "El archivo no puede ser leído."
-	exit 1
+	return 1
 fi
 
 
@@ -112,7 +112,7 @@ fi
 if [ "$AMBIENTE_INICIALIZADO" = "true" ]
 then
 	echo "Ambiente ya inicializado, para reiniciar termine la sesión e ingrese nuevamente."
-	exit 1 #retorna 1 para indicar error
+	return 1 #retorna 1 para indicar error
 fi
 
 
@@ -124,7 +124,7 @@ echo "Se setearon las variables de entorno."
 # chequeo variables
 if ! verificarVariables ; then
     echo 'variables no incializadas'
-    exit 1
+    return 1
 fi
 
 # verifico permisos
