@@ -48,7 +48,7 @@ print()
     # muestra un mensaje obtenido en $1 por STDOUT
 
     mensaje=$1
-$ARCHIVO_LOG "Instalador" "Info" "$mensaje" "$DIR_CONF_ABSOLUTO"
+    $ARCHIVO_LOG "instalador" "Info" "$mensaje" "$DIR_CONF_ABSOLUTO"
     echo $mensaje
 }
 
@@ -65,7 +65,7 @@ error()
         rc=1
     fi
 
-    $ARCHIVO_LOG "Instalador" "Info" "$mensaje" "$DIR_CONF_ABSOLUTO"
+    $ARCHIVO_LOG "instalador" "Info" "$mensaje" "$DIR_CONF_ABSOLUTO"
     echo -e $mensaje >&2
     exit $rc
 }
@@ -257,23 +257,15 @@ while [ "$1" != "" ]; do
 done
 
 if [ "$verificar_instalacion" -eq 1 ] ; then
+    if [ ! -f "$ARCHIVO_CONF" ] ; then
+        print "El paquete no ha sido instalado todavia"
+    else
+        print "El paquete ya ha sido instalado"
 
-	mensaje=''
-
-    	if [ ! -f "$ARCHIVO_CONF" ] 
-	then
-		mensaje="El paquete no ha sido instalado todavia"
-	else
-		mensaje="El paquete ya ha sido instalado"
-
-		cargar_config
-	    	mostrar_config
-	fi
-
-	echo "$mensaje"
-	$ARCHIVO_LOG "Instalador" "Info" "$mensaje" "$DIR_CONF_ABSOLUTO"
-
-	exit 0
+        cargar_config
+        mostrar_config
+    fi
+    exit 0
 fi
 
 # verifica las dependencias
@@ -294,10 +286,3 @@ done
 guardar_config
 
 inicializar_directorios
-
-# voy al path de binarios para lanzar el inicializador.sh
-if $DIR_LIBS/pregunta.sh "Desea continuar con la incialización?"; then
-    path=$(canonicalizar $binarios)
-    cd $path
-    ./inicializador.sh
-fi
