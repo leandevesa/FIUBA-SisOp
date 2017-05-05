@@ -116,13 +116,13 @@ solicitar_directorio()
             rv=$default
         fi
 
-        # canonicalize
-        rv=`canonicalizar $rv`
-
-        if [ "$rv" == `canonicalizar DIR_CONF` ] ; then
-            print "$DIR_CONF es un directorio reservado, por favor elija uno distinto"
+        if [ "${rv##*/}" == "$DIR_CONF" ] ; then
+            print "$DIR_CONF es una palabra reservada, por favor elija otro directorio"
             continue
         fi
+
+        # canonicalize
+        rv=`canonicalizar $rv`
 
         # verifica que el path ingresado por el usuario este dentro de DIR_BASE
         if [[ ! "$rv" == `canonicalizar $DIR_BASE`* ]] ; then
