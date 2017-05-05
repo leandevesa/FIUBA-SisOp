@@ -229,7 +229,7 @@ inicializar_directorios()
 
         recurso="$DIR_RECURSOS/$d"
         if [ -d $recurso ] ; then
-            echo "copiando $d a $path"
+            echo "Copiando $d a $path"
             cp -R "$recurso/." "$path/"
         fi
     done
@@ -237,14 +237,50 @@ inicializar_directorios()
     cp -R "$DIR_LIBS" "$DIR_BASE"
 }
 
+realizar_reinstalacion()
+{
+	print "El sistema va a ser reinstalado..."
+
+    # mueve los archivos
+    for d in "${DIRECTORIOS[@]}"; do
+        path=${!d}
+
+        recurso="$DIR_RECURSOS/$d"
+        if [ -d $recurso ] ; then
+            print "Copiando $d a $path"
+            cp -R "$recurso/." "$path/"
+        fi
+    done
+
+	print "Copiando $DIR_LIBS a $DIR_BASE"
+    cp -R "$DIR_LIBS" "$DIR_BASE"
+
+	print "El sistema se ha reinstalado correctamente"
+}
+
+realizar_instalacion() {
+	# solicita al usuario los datos necesarios
+	obtener_datos_del_usuario
+	until $DIR_LIBS/pregunta.sh "Desea proceder con la instalación?" ; do
+	    obtener_datos_del_usuario
+	done
+
+	# se persiste la configuración en un archivo
+	guardar_config
+
+	inicializar_directorios
+}
+
 DIR_CONF_ABSOLUTO=`canonicalizar $DIR_CONF`
 
 verificar_instalacion=0 # flag
+elige_reinstalar=0;
 
 # manejo de los parametros de entrada
 while [ "$1" != "" ]; do
     case $1 in
         -t          ) verificar_instalacion=1;;
+        -i          ) elige_reinstalar=1;;
         -h | --help ) mostrar_ayuda;
                       exit 0;;
         *           ) echo "ERROR: parámetro invalido: $1" >&2;
@@ -276,13 +312,11 @@ fi
 # crea la variable para cada directorio y con los valores por defecto/configurados
 inicializar_var_directorios
 
-# solicita al usuario los datos necesarios
-obtener_datos_del_usuario
-until $DIR_LIBS/pregunta.sh "Desea proceder con la instalación?" ; do
-    obtener_datos_del_usuario
-done
+if [ "$elige_reinstalar" -eq 1 ] ; then
+    if [ -f "$ARCHIVO_CONF" ] ; then
+    	realizar_reinstalacion
+    	exit 0
+    fi
+fi
 
-# se persiste la configuración en un archivo
-guardar_config
-
-inicializar_directorios
+realizar_instalacion
