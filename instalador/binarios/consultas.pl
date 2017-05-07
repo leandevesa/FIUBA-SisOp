@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 use Getopt::Long;
+use Data::Dumper;
 
 Getopt::Long::Configure("pass_through");
 
@@ -188,6 +189,15 @@ sub codigo2entidad($) {
     return $_[0];
 }
 
+sub listar_archivos_fuente {
+    # TODO: buscar los archivos que estan en el rango correcto de fechas
+    opendir( DIR, $DIR_TRANSFER );
+    my @archivos = grep(/${RE_FECHA}.txt/,readdir(DIR));
+    closedir( DIR );
+
+    return @archivos;
+}
+
 # parsea una transaccion desde una linea leida del archivo
 # si el formato es valido, retorna un hash con los campos y los valores asociados
 # si el formato es invalido, retorna 0
@@ -195,17 +205,22 @@ sub codigo2entidad($) {
 sub parsear_transaccion {
     my $linea = $_[0];
 
+    # TODO: parsear el formato correcto de entrada (faltan campos)
     if( $linea =~ /^(${RE_FECHA});(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
         # las variables de los matches se tienen que copiar a variables locales o sino se pierden
         # cuando se sale del scope
         my ($fecha, $monto, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5);
         $monto  =~ s/,/./;
+        my ($origen) = $cbu_origen =~ /^(\d{3})/;
+        my ($destino) = $cbu_destino =~ /^(\d{3})/;
         return (
             'fecha'       => $fecha,
             'monto'       => $monto,
             'estado'      => $estado,
             'cbu_origen'  => $cbu_origen,
             'cbu_destino' => $cbu_destino,
+            'origen'      => $origen,
+            'destino'     => $destino,
         );
     } else {
         return 0;
@@ -247,16 +262,21 @@ sub iterar_archivo {
     }
 }
 
+# dada una lista de archivos, los recorre parseando las transacciones y aplicando los filtros.
+# por cada archivo se ejecuta una subrutina, y luego se itera cada transaccion.
+# si los filtros aprobaron la transaccion, se ejecuta la subrutina que recibe los datos de la
+# transaccion en un hash.
+# paramtros: referencia a lista de archivos, referencia a lista de filtros, subrutina
+sub iterar_archivos($$$$) {
+    my ($archivos, $filtros, $cb_archivo, $cb_transaccion) = @_;
+}
+
 # subcomando para generar listados
 # recibe un puntero al array de filtros
 sub listado {
     my $filtros = shift;
     my $total = 0;
-
-    # TODO: buscar los archivos que estan en el rango correcto de fechas
-    opendir( DIR, $DIR_TRANSFER );
-    my @archivos = grep(/${RE_FECHA}.txt/,readdir(DIR));
-    closedir( DIR );
+    my @archivos = listar_archivos_fuente;
 
     print "FECHA,IMPORTE,ESTADO,ORIGEN,DESTINO\n";
 
@@ -364,13 +384,44 @@ sub listado_destino {
     listado \@filtros;
 }
 
+sub ranking {
+    GetOptions('<>' => sub { die "El comando ranking no tiene parámetros de entrada.\n" });
+
+    my $filtros = shift;
+    my (%ingresos, %egresos);
+    my @archivos = listar_archivos_fuente;
+
+    foreach my $archivo (@archivos) {
+        open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
+
+        # la subrutina acumula los montos ingresados y emitidos para cada entidad
+        iterar_archivo $fp, $filtros, sub {
+                                          my %data = %{$_[0]};
+
+                                          if( $data{'monto'} > 0 ) {
+                                            $ingresos{$data{'origen'}} += $data{'monto'};
+                                          } else {
+                                            $egresos{$data{'origen'}} += $data{'monto'};
+                                          }
+                                      };
+    }
+
+    print "Top 3 ingresos\n";
+    my @claves = sort { $ingresos{$b} <=> $ingresos{$a} } keys(%ingresos);
+    print join( "\n", map { "$_,$ingresos{$_}" } @claves[0..2] ) . "\n";
+
+    print "\nTop 3 egresos\n";
+    @claves = sort { $egresos{$a} <=> $egresos{$b} } keys(%egresos);  # el cb de comparacion es distinto!
+    print join( "\n", map { "$_,$egresos{$_}" } @claves[0..2] ) . "\n";
+}
+
 # routinas de cada subcomando
 my %COMANDOS = (
     'listado-origen'  => \&listado_origen,
     'listado-destino' => \&listado_destino,
     'listado-cbu'     => \&listado_cbu,
+    'ranking'         => \&ranking,
     'balance' => sub { die "IMPLEMENTAR"; }, # TODO
-    'ranking' => sub { die "IMPLEMENTAR"; }, # TODO
 );
 
 # variables ingresadas por parámetro
