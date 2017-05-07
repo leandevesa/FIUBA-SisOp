@@ -24,6 +24,7 @@ our $RE_CBU = qw/\d{22}/;
 
 
 # muestra el mesaje de ayuda
+# TODO: actualizar
 sub help {
     print<<EOF;
 Uso: ./consultas.pl [-hfodeti]
@@ -209,13 +210,13 @@ sub parsear_transaccion {
     if( $linea =~ /^(${RE_FECHA});(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
         # las variables de los matches se tienen que copiar a variables locales o sino se pierden
         # cuando se sale del scope
-        my ($fecha, $monto, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5);
-        $monto  =~ s/,/./;
+        my ($fecha, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5);
+        $importe  =~ s/,/./;
         my ($origen) = $cbu_origen =~ /^(\d{3})/;
         my ($destino) = $cbu_destino =~ /^(\d{3})/;
         return (
             'fecha'       => $fecha,
-            'monto'       => $monto,
+            'importe'     => $importe,
             'estado'      => $estado,
             'cbu_origen'  => $cbu_origen,
             'cbu_destino' => $cbu_destino,
@@ -289,12 +290,12 @@ sub listado {
         iterar_archivo $fp, $filtros, sub {
                                           my %data = %{$_[0]};
                                           print join( ',', $data{'fecha'},
-                                                           $data{'monto'},
+                                                           $data{'importe'},
                                                            $data{'estado'},
                                                            $data{'cbu_origen'},
                                                            $data{'cbu_destino'} ) . "\n";
-                                          $total += $data{'monto'};
-                                          $subtotal += $data{'monto'};
+                                          $total += $data{'importe'};
+                                          $subtotal += $data{'importe'};
                                       };
 
         my ($dia) = $archivo =~ /^\d{6}0?(\d{1,2}).txt/;
@@ -398,10 +399,10 @@ sub ranking {
         iterar_archivo $fp, $filtros, sub {
                                           my %data = %{$_[0]};
 
-                                          if( $data{'monto'} > 0 ) {
-                                            $ingresos{$data{'origen'}} += $data{'monto'};
+                                          if( $data{'importe'} > 0 ) {
+                                            $ingresos{$data{'origen'}} += $data{'importe'};
                                           } else {
-                                            $egresos{$data{'origen'}} += $data{'monto'};
+                                            $egresos{$data{'origen'}} += $data{'importe'};
                                           }
                                       };
     }
@@ -477,5 +478,5 @@ if( @destino ) {
     push @filtros, factory_filtros_or( \@destino, \&crear_filtro_destino );
 }
 
-# ejecuta el subcomando con las transacciones filtradas
+# ejecuta el subcomando y se le pasan los filtros gobales
 $cb->( \@filtros );
