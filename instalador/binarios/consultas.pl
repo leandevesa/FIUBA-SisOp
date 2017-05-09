@@ -3,7 +3,9 @@
 use warnings;
 use strict;
 use Getopt::Long;
+use Time::Local;
 use Data::Dumper;
+
 
 Getopt::Long::Configure("pass_through");
 
@@ -95,16 +97,18 @@ sub crear_filtro_fecha($$) {
     }
 
     # TODO: verificar que sea una fecha válida
+    my ($year, $month, $day) = unpack "A4 A2 A2", $fecha;
+    eval{ timelocal(0,0,0,$day, $month-1, $year); 1; } or die "Fecha inválida: $@\n";
 
     if( $superior ) {
         return sub {
-            # TODO: implementar el filtro
-            print "filtro por fechas hasta $fecha\n";
+            my %data = %{$_[0]};
+            return ($fecha gt $data{'fecha'} or $fecha eq $data{'fecha'});
         };
     } else {
         return sub {
-            # TODO: implementar el filtro
-            print "filtro por fechas desde $fecha\n";
+            my %data = %{$_[0]};
+            return ($fecha lt $data{'fecha'} or $fecha eq $data{'fecha'});
         };
     }
 }
@@ -374,7 +378,7 @@ sub listado_destino {
 
     GetOptions(
         'entidad=s' => \$entidad,
-        '<>'      => sub{ die "Opción inválida $_[0]\n"; },
+        '<>'        => sub{ die "Opción inválida $_[0]\n"; },
     ) or die "Utilice ./consultas.pl help listado-destino para obtener mas información.\n";
 
     if( not $entidad ) {
@@ -453,7 +457,7 @@ GetOptions('help|h'          => \&help,
                                         die "!FINISH";
                                     }
                                 })
-    or die "Utilice -h/--help para obtener mas información\n";
+    or die "Utilice -h/--help para obtener mas información.\n";
 
 # valida el subcomando
 my $cb;
