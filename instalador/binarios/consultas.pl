@@ -182,6 +182,11 @@ sub logger {
     print STDERR "\n";
 }
 
+sub min($$) {
+    my ($x, $y) = @_;
+    return ($x, $y)[$x > $y];
+}
+
 # convierte el codigo de una entidad al nombre correspondiente
 sub codigo2entidad($) {
     # TODO: leer del maestro de bancos y retornar el nombre adecuado
@@ -409,11 +414,11 @@ sub ranking {
 
     print "Top 3 ingresos\n";
     my @claves = sort { $ingresos{$b} <=> $ingresos{$a} } keys(%ingresos);
-    print join( "\n", map { "$_,$ingresos{$_}" } @claves[0..2] ) . "\n";
+    print join( "\n", map { "$_,$ingresos{$_}" } @claves[0..min(2, $#claves)] ) . "\n";
 
     print "\nTop 3 egresos\n";
     @claves = sort { $egresos{$a} <=> $egresos{$b} } keys(%egresos);  # el cb de comparacion es distinto!
-    print join( "\n", map { "$_,$egresos{$_}" } @claves[0..2] ) . "\n";
+    print join( "\n", map { "$_,$egresos{$_}" } @claves[0..min(2, $#claves)] ) . "\n";
 }
 
 # routinas de cada subcomando
