@@ -170,13 +170,7 @@ sub crear_filtro_importe {
 
 # crea un filtro para una una entidad de origen
 sub crear_filtro_origen {
-    my $origen = $_[0];
-
-    if( exists $CODIGOS{$origen} ) {
-        $origen = $CODIGOS{$origen};
-    }
-
-    exists $ENTIDADES{$origen} or die "Entidad de origen desconocida: $origen.\n";
+    my $origen = entidad2codigo( $_[0] );
 
     return sub {
         my %data = %{$_[0]};
@@ -186,13 +180,7 @@ sub crear_filtro_origen {
 
 # crea un filtro para una una entidad de destino
 sub crear_filtro_destino {
-    my $destino = $_[0];
-
-    if( exists $CODIGOS{$destino} ) {
-        $destino = $CODIGOS{$destino};
-    }
-
-    exists $ENTIDADES{$destino} or die "Entidad de destino desconocida: $destino.\n";
+    my $destino = entidad2codigo( $_[0] );
 
     return sub {
         my %data = %{$_[0]};
@@ -249,11 +237,25 @@ sub min($$) {
 }
 
 # convierte el codigo de una entidad al nombre correspondiente
+sub entidad2codigo($) {
+    my $rv = $_[0];
+    if( exists $CODIGOS{$rv} ) {
+        $rv = $CODIGOS{$rv};
+    }
+
+    exists $ENTIDADES{$rv} or die "Entidad desconocida: $rv.\n";
+    return $rv;
+}
+
+# convierte la entidad al codigo correspondiente
 sub codigo2entidad($) {
-    # TODO: leer del maestro de bancos y retornar el nombre adecuado
-    $_[0] or die "Código de entidad inválido.\n";
-    $_[0] =~ /^\d{3}$/ or die "Código de entidad inválido: $_[0]\n";
-    return $_[0];
+    my $rv = $_[0];
+    if( exists $ENTIDADES{$rv} ) {
+        $rv = $ENTIDADES{$rv};
+    }
+
+    exists $CODIGOS{$rv} or die "Entidad desconocida: $rv.\n";
+    return $rv;
 }
 
 sub listar_archivos_fuente {
@@ -419,7 +421,7 @@ sub listado_origen {
     if( not $entidad ) {
         die "Se require una entidad\n";
     }
-    $banco = codigo2entidad $entidad;
+    $banco = codigo2entidad( $entidad );
 
     # agrega el filtro correspondiente
     push @filtros, crear_filtro_origen( $entidad );
@@ -441,7 +443,7 @@ sub listado_destino {
     if( not $entidad ) {
         die "Se require una entidad\n";
     }
-    $banco = codigo2entidad $entidad;
+    $banco = codigo2entidad( $entidad );
 
     # agrega el filtro correspondiente
     push @filtros, crear_filtro_destino( $entidad );
