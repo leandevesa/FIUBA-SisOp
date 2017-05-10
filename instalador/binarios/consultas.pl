@@ -39,17 +39,18 @@ my @filtros;
 sub help {
     print<<EOF;
 Uso: ./consultas.pl [-hfodeti]
-  -h, --help          Muestra este mensaje y termina el programa.
-  -f, --fuente        Indica una fuente por la cual filtrar la consulta (puede repetirse varias
-                      veces).
-  -o, --origen        Indica una entidad de origen por la cual filtrar la consulta (puede
-                      repetirse varias veces).
-  -d, --destino       Indica una entidad de destino por la cual filtrar la consulta (puede
-                      repetirse varias veces).
-  -e, --estado        Indica el estado por el cual filtrar la consulta (pendiente|anulada).
-  -s, --fecha-desde   Indica la fecha de transferencia desde la cual aceptar transacciones.
-  -u, --fecha-hasta   Indica la fecha de transferencia hasta la cual aceptar transacciones.
-  -i, --importe       Indica el importe por el cual filtrar la consulta.
+  -h, --help           Muestra este mensaje y termina el programa.
+  -f, --fuente         Indica una fuente por la cual filtrar la consulta (puede repetirse varias
+                       veces).
+  -o, --origen         Indica una entidad de origen por la cual filtrar la consulta (puede
+                       repetirse varias veces).
+  -d, --destino        Indica una entidad de destino por la cual filtrar la consulta (puede
+                       repetirse varias veces).
+  -e, --estado         Indica el estado por el cual filtrar la consulta (pendiente|anulada).
+  -s, --fecha-desde    Indica la fecha de transferencia desde la cual aceptar transacciones.
+  -u, --fecha-hasta    Indica la fecha de transferencia hasta la cual aceptar transacciones.
+  -i, --importe-desde  Las transacciones con importe menor al indicado son filtradas.
+  -l, --importe-hasta  Las transacciones con importe mayor al indicado son filtradas.
 
 Realiza consultas en las transacciones aplicando los filtros especificados por el usuario.
 Si no se especifica un filtro se incluyen todos los valores posibles para ese campo.
@@ -146,6 +147,26 @@ sub crear_filtro_fuente {
     return sub {
         my %data = %{$_[0]};
         return $data{'fuente'} =~ /^$fuente/;
+    };
+}
+
+# crea un filtro para un importe minimo
+sub crear_filtro_importe_desde {
+    my $importe = $_[0];
+
+    return sub {
+        my %data = %{$_[0]};
+        return $data{'importe'} >= $importe;
+    };
+}
+
+# crea un filtro para un importe minimo
+sub crear_filtro_importe_hasta {
+    my $importe = $_[0];
+
+    return sub {
+        my %data = %{$_[0]};
+        return $data{'importe'} <= $importe;
     };
 }
 
@@ -540,6 +561,8 @@ GetOptions('help|h'          => \&help,
            'destino|d=s'     => \@destino,
            'fecha-desde|s=s' => \&agregar_filtro_fecha_desde,
            'fecha-hasta|u=s' => \&agregar_filtro_fecha_hasta,
+           'importe-desde|i=s' => sub { push @filtros, crear_filtro_importe_desde( $_[1] ); },
+           'importe-hasta|l=s' => sub { push @filtros, crear_filtro_importe_hasta( $_[1] ); },
            "<>"              => sub {
                                     # al encontrar una opcion desconocida se dejan de parsear los
                                     # parametros y se asume que debe ser un sub-comando
