@@ -150,23 +150,19 @@ sub crear_filtro_fuente {
     };
 }
 
-# crea un filtro para un importe minimo
-sub crear_filtro_importe_desde {
-    my $importe = $_[0];
+# crea un filtro para un importe minimo o tope
+sub crear_filtro_importe {
+    my ($importe, $minimo) = @_;
+
+    $importe =~ /(^\d+\.\d{2}$)|(^\d+$)/ or die "Importe inválido: $importe.\n";
 
     return sub {
         my %data = %{$_[0]};
-        return $data{'importe'} >= $importe;
-    };
-}
-
-# crea un filtro para un importe minimo
-sub crear_filtro_importe_hasta {
-    my $importe = $_[0];
-
-    return sub {
-        my %data = %{$_[0]};
-        return $data{'importe'} <= $importe;
+        if( $minimo ) {
+            return $data{'importe'} >= $importe;
+        } else {
+            return $data{'importe'} <= $importe;
+        }
     };
 }
 
@@ -561,8 +557,8 @@ GetOptions('help|h'            => \&help,
            'destino|d=s'       => \@destino,
            'fecha-desde|s=s'   => \&agregar_filtro_fecha_desde,
            'fecha-hasta|u=s'   => \&agregar_filtro_fecha_hasta,
-           'importe-desde|i=s' => sub { push @filtros, crear_filtro_importe_desde( $_[1] ); },
-           'importe-hasta|l=s' => sub { push @filtros, crear_filtro_importe_hasta( $_[1] ); },
+           'importe-desde|i=s' => sub { push @filtros, crear_filtro_importe( $_[1], 1 ); },
+           'importe-hasta|l=s' => sub { push @filtros, crear_filtro_importe( $_[1], 0 ); },
            "<>"                => sub {
                                       # al encontrar una opcion desconocida se dejan de parsear los
                                       # parametros y se asume que debe ser un sub-comando
