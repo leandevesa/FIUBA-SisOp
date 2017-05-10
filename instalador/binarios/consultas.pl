@@ -38,7 +38,9 @@ my @filtros;
 # TODO: actualizar
 sub help {
     print<<EOF;
-Uso: ./consultas.pl [-hfodeti]
+Uso: ./consultas.pl [-hfodesuil] COMANDO [PARAMETROS EXTRA]
+
+Parámetros globales (aplican a todos los comandos)
   -h, --help           Muestra este mensaje y termina el programa.
   -f, --fuente         Indica una fuente por la cual filtrar la consulta (puede repetirse varias
                        veces).
@@ -49,8 +51,8 @@ Uso: ./consultas.pl [-hfodeti]
   -e, --estado         Indica el estado por el cual filtrar la consulta (pendiente|anulada).
   -s, --fecha-desde    Indica la fecha de transferencia desde la cual aceptar transacciones.
   -u, --fecha-hasta    Indica la fecha de transferencia hasta la cual aceptar transacciones.
-  -i, --importe-desde  Las transacciones con importe menor al indicado son filtradas.
-  -l, --importe-hasta  Las transacciones con importe mayor al indicado son filtradas.
+  -i, --importe-desde  Las transacciones con importe menor al indicado son filtradas (nnnn.nn).
+  -l, --importe-hasta  Las transacciones con importe mayor al indicado son filtradas (nnnn.nn).
 
 Realiza consultas en las transacciones aplicando los filtros especificados por el usuario.
 Si no se especifica un filtro se incluyen todos los valores posibles para ese campo.
@@ -581,7 +583,7 @@ if( $subcomando ) {
         die "Comando inválido: $subcomando.\nSe esperaba " . join( "|", keys %COMANDOS ) . "\n";
     }
 } else {
-    die "No se indicó ningún comando.\n";
+    die "No se indicó ningún comando.\nSe esperaba " . join( "|", keys %COMANDOS ) . "\n";
 }
 
 # crea los filtros para aplicar a las transacciones
