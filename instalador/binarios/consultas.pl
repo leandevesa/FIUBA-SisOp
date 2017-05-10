@@ -554,27 +554,27 @@ my %COMANDOS = (
 my ($subcomando, @fuentes, @origen, @destino);
 
 # parsea los parámetros de entrada generando los filtros de búsqueda
-GetOptions('help|h'          => \&help,
-           'fuente|f=s@'     => \@fuentes,
-           'estado|e=s@'     => \&agregar_filtro_estado,
-           'origen|o=s'      => \@origen,
-           'destino|d=s'     => \@destino,
-           'fecha-desde|s=s' => \&agregar_filtro_fecha_desde,
-           'fecha-hasta|u=s' => \&agregar_filtro_fecha_hasta,
+GetOptions('help|h'            => \&help,
+           'fuente|f=s@'       => \@fuentes,
+           'estado|e=s@'       => \&agregar_filtro_estado,
+           'origen|o=s'        => \@origen,
+           'destino|d=s'       => \@destino,
+           'fecha-desde|s=s'   => \&agregar_filtro_fecha_desde,
+           'fecha-hasta|u=s'   => \&agregar_filtro_fecha_hasta,
            'importe-desde|i=s' => sub { push @filtros, crear_filtro_importe_desde( $_[1] ); },
            'importe-hasta|l=s' => sub { push @filtros, crear_filtro_importe_hasta( $_[1] ); },
-           "<>"              => sub {
-                                    # al encontrar una opcion desconocida se dejan de parsear los
-                                    # parametros y se asume que debe ser un sub-comando
-                                    # el resto de los parametros no se validan, ya que de eso se
-                                    # encarga la subrutina de cada sub-comando
-                                    if ($_[0] =~ /^-/) {
-                                        die "Opción inválida $_[0]\n";
-                                    } else {
-                                        $subcomando = $_[0];
-                                        die "!FINISH";
-                                    }
-                                })
+           "<>"                => sub {
+                                      # al encontrar una opcion desconocida se dejan de parsear los
+                                      # parametros y se asume que debe ser un sub-comando
+                                      # el resto de los parametros no se validan, ya que de eso se
+                                      # encarga la subrutina de cada sub-comando
+                                      if ($_[0] =~ /^-/) {
+                                          die "Opción inválida $_[0]\n";
+                                      } else {
+                                          $subcomando = $_[0];
+                                          die "!FINISH";
+                                      }
+                                  })
     or die "Utilice -h/--help para obtener ayuda.\n";
 
 # valida el subcomando
