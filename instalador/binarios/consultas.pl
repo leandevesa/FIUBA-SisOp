@@ -24,23 +24,32 @@ our $RE_MONTO = q/-?\d+\,\d{2}/;
 # expresion regular para CBUs
 our $RE_CBU = qw/\d{22}/;
 
+# un hash que mappea el código de la entidad al nombre
+our %ENTIDADES;
+
+# un hash que mappea el nombre de la entidad al código
+our %CODIGOS;
+
+# array de filtros para aplicar a la búsqueda
+# los filtros se arman en base a los parámetros de entrada usando GetOptions
+my @filtros;
 
 # muestra el mesaje de ayuda
 # TODO: actualizar
 sub help {
     print<<EOF;
 Uso: ./consultas.pl [-hfodeti]
-  -h, --help          Muestra este mensaje y termina el programa
+  -h, --help          Muestra este mensaje y termina el programa.
   -f, --fuente        Indica una fuente por la cual filtrar la consulta (puede repetirse varias
-                      veces)
+                      veces).
   -o, --origen        Indica una entidad de origen por la cual filtrar la consulta (puede
-                      repetirse varias veces)
+                      repetirse varias veces).
   -d, --destino       Indica una entidad de destino por la cual filtrar la consulta (puede
-                      repetirse varias veces)
-  -e, --estado        Indica el estado por el cual filtrar la consulta
+                      repetirse varias veces).
+  -e, --estado        Indica el estado por el cual filtrar la consulta (pendiente|anulada).
   -s, --fecha-desde   Indica la fecha de transferencia desde la cual aceptar transacciones.
   -u, --fecha-hasta   Indica la fecha de transferencia hasta la cual aceptar transacciones.
-  -i, --importe       Indica el importe por el cual filtrar la consulta
+  -i, --importe       Indica el importe por el cual filtrar la consulta.
 
 Realiza consultas en las transacciones aplicando los filtros especificados por el usuario.
 Si no se especifica un filtro se incluyen todos los valores posibles para ese campo.
@@ -48,9 +57,26 @@ EOF
     exit 0;
 }
 
-# array de filtros para aplicar a la búsqueda
-# los filtros se arman en base a los parámetros de entrada usando GetOptions
-my @filtros;
+# lee el maestro de bancos y carga los valores en el hash de salida
+sub leer_maestro_bancos {
+    my ($entidades, $codigos) = (shift, shift);
+    my $archivo = $ENV{'DIRMAE'} . '/bancos.csv';
+
+    open my $fp, $archivo or die "No se pudo abrir el maestro de bancos $archivo: $!\n";
+
+    my $contador = 1;
+    while (my $linea = <$fp>) {
+        my @campos = split /;/, $linea;
+        scalar @campos == 3 or die "Formato del maestro de bancos inesperado.\nLinea $contador: $linea\n";
+
+        $entidades->{$campos[0]} = $campos[1];
+        $codigos->{$campos[1]} = $campos[0];
+        $contador += 1;
+    }
+}
+
+leer_maestro_bancos \%ENTIDADES, \%CODIGOS;
+
 
 # recibe un array y una subrutina que fabrica filtros.
 # por cada elemento del array crea un filtro y retorna un filtro OR de todos los anteriormente
@@ -127,6 +153,12 @@ sub crear_filtro_fuente {
 sub crear_filtro_origen {
     my $origen = $_[0];
 
+    if( exists $CODIGOS{$origen} ) {
+        $origen = $CODIGOS{$origen};
+    }
+
+    exists $ENTIDADES{$origen} or die "Entidad de origen desconocida: $origen.\n";
+
     return sub {
         my %data = %{$_[0]};
         return $data{'cbu_origen'} =~ /^$origen/;
@@ -136,6 +168,12 @@ sub crear_filtro_origen {
 # crea un filtro para una una entidad de destino
 sub crear_filtro_destino {
     my $destino = $_[0];
+
+    if( exists $CODIGOS{$destino} ) {
+        $destino = $CODIGOS{$destino};
+    }
+
+    exists $ENTIDADES{$destino} or die "Entidad de destino desconocida: $destino.\n";
 
     return sub {
         my %data = %{$_[0]};
@@ -159,7 +197,7 @@ sub agregar_filtro_estado {
     if( $v =~ /^(${RE_ESTADO})$/i ) {
         push @filtros, crear_filtro_estado( lc $1 );
     } else {
-        die "valor de estado inválido $v.\n";
+        die "valor de estado inválido: $v.\n";
     }
 }
 
@@ -322,7 +360,7 @@ sub listado_cbu {
         'origen'  => \$origen,
         'destino' => \$destino,
         '<>'      => sub{ die "Opción inválida $_[0]\n"; },
-    ) or die "Utilice ./consultas.pl help listado-cbu para obtener mas información.\n";
+    ) or die "Utilice ./consultas.pl help listado-cbu para obtener ayuda.\n";
 
     # valida los parametros del usuario
     if( not $cbu ) {
@@ -357,7 +395,7 @@ sub listado_origen {
     GetOptions(
         'entidad=s' => \$entidad,
         '<>'      => sub{ die "Opción inválida $_[0]\n"; },
-    ) or die "Utilice ./consultas.pl help listado-origen para obtener mas información.\n";
+    ) or die "Utilice ./consultas.pl help listado-origen para obtener ayuda.\n";
 
     if( not $entidad ) {
         die "Se require una entidad\n";
@@ -379,7 +417,7 @@ sub listado_destino {
     GetOptions(
         'entidad=s' => \$entidad,
         '<>'        => sub{ die "Opción inválida $_[0]\n"; },
-    ) or die "Utilice ./consultas.pl help listado-destino para obtener mas información.\n";
+    ) or die "Utilice ./consultas.pl help listado-destino para obtener ayuda.\n";
 
     if( not $entidad ) {
         die "Se require una entidad\n";
@@ -425,13 +463,70 @@ sub ranking {
     print join( "\n", map { "$_,$egresos{$_}" } @claves[0..min(2, $#claves)] ) . "\n";
 }
 
+sub balance_por_entidad {
+    my @entidades;
+
+    # TODO: mostrar el detalle de transacciones?
+    GetOptions(
+        '--entidad=s@' => \@entidades,
+        '<>'           => sub{ die "Opción inválida $_[0]\n"; },
+    ) or die "Utilice ./consultas.pl help listado-destino para obtener ayuda.\n";
+
+    my $filtros = shift;
+    my (%ingresos, %egresos);
+    my @archivos = listar_archivos_fuente;
+
+    if( scalar @entidades == 0 ) {
+        @entidades = keys %ENTIDADES;
+    }
+
+    # agrega el filtro correspondiente
+    push @{$filtros}, crear_filtro_or(
+                          factory_filtros_or( \@entidades, \&crear_filtro_origen ),
+                          factory_filtros_or( \@entidades, \&crear_filtro_destino ));
+
+    foreach my $archivo (@archivos) {
+        open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
+
+        # la subrutina acumula el balance para cada entidad
+        iterar_archivo $fp, $filtros, sub {
+                                          my %data = %{$_[0]};
+                                          if( $data{'origen'} eq $data{'destino'} ) {
+                                            return;
+                                          }
+
+                                          # es una transaccion desde una de las entidades?
+                                          if( grep /^$data{'origen'}$/, @entidades ) {
+                                              $egresos{$data{'origen'}} += $data{'importe'};
+                                          }
+
+                                          # o es hacia una?
+                                          if( grep /^$data{'destino'}$/, @entidades ) {
+                                              $ingresos{$data{'origen'}} += $data{'importe'};
+                                          }
+                                      };
+    }
+
+    # imprime el resultado por cada entidad
+    for my $entidad (sort @entidades) {
+        my ($egreso, $ingreso) = (($egresos{$entidad} or 0), ($ingresos{$entidad} or 0));
+        my $balance = $ingreso - $egreso;
+        my $signo = ('NEUTRO', 'POSITIVO', 'NEGATIVO')[$balance <=> 0];
+
+        print "Desde $entidad,$egreso,Hacia otras entidades\n";
+        print "Hacia $entidad,$ingreso,Desde otras entidades\n";
+        print "Balance $signo para $entidad,$balance\n";
+        print "\n";
+    }
+}
+
 # routinas de cada subcomando
 my %COMANDOS = (
     'listado-origen'  => \&listado_origen,
     'listado-destino' => \&listado_destino,
     'listado-cbu'     => \&listado_cbu,
     'ranking'         => \&ranking,
-    'balance' => sub { die "IMPLEMENTAR"; }, # TODO
+    'balance-entidad' => \&balance_por_entidad,
 );
 
 # variables ingresadas por parámetro
@@ -457,7 +552,7 @@ GetOptions('help|h'          => \&help,
                                         die "!FINISH";
                                     }
                                 })
-    or die "Utilice -h/--help para obtener mas información.\n";
+    or die "Utilice -h/--help para obtener ayuda.\n";
 
 # valida el subcomando
 my $cb;
