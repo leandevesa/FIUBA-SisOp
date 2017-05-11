@@ -4,6 +4,8 @@
 
 ARCHIVO_PID="$DIRBIN/pid"  # nombre del archivo donde se guarda el pid del daemon
 
+ARCHIVO_LOG="../libs/log.sh"
+
 set -e
 
 print()
@@ -11,7 +13,7 @@ print()
     # muestra un mensaje obtenido en $1 por STDOUT
 
     mensaje=$1
-
+    $ARCHIVO_LOG "Monitor" "Info" "$mensaje"
     echo $mensaje
 }
 
@@ -23,6 +25,8 @@ error()
 
     mensaje=$1
     rc=$2
+
+    $ARCHIVO_LOG "Monitor" "Error" "$mensaje"
 
     if [ -z "$rc" ] ; then
         rc=1
@@ -96,7 +100,7 @@ detener_daemon()
 
     set -e
 
-    echo 'demonio detenido'
+    print 'demonio detenido'
     rm $ARCHIVO_PID
 }
 
