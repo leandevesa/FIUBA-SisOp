@@ -170,7 +170,11 @@ sub crear_filtro_importe {
 
 # crea un filtro para una una entidad de origen
 sub crear_filtro_origen {
-    my $origen = entidad2codigo( $_[0] );
+    my $origen = shift;
+
+    if( $origen !~ /^${RE_CBU}$/ ) {
+        $origen = entidad2codigo( $origen );
+    }
 
     return sub {
         my %data = %{$_[0]};
@@ -180,7 +184,11 @@ sub crear_filtro_origen {
 
 # crea un filtro para una una entidad de destino
 sub crear_filtro_destino {
-    my $destino = entidad2codigo( $_[0] );
+    my $destino = shift;
+
+    if( $destino !~ /^${RE_CBU}$/ ) {
+        $destino = entidad2codigo( $destino );
+    }
 
     return sub {
         my %data = %{$_[0]};
@@ -288,8 +296,8 @@ sub parsear_transaccion {
             'estado'      => $estado,
             'cbu_origen'  => $cbu_origen,
             'cbu_destino' => $cbu_destino,
-            'origen'      => $origen,
-            'destino'     => $destino,
+            'origen'      => codigo2entidad $origen,
+            'destino'     => codigo2entidad $destino,
         );
     } else {
         return 0;
@@ -375,11 +383,9 @@ sub listado {
 # realiza un listado por CBU
 sub listado_cbu {
     # parsea los argumentos particulares del comando
-    my ($cbu, $origen, $destino);
+    my $cbu;
     GetOptions(
         'cbu=s'   => \$cbu,
-        'origen'  => \$origen,
-        'destino' => \$destino,
         '<>'      => sub{ die "Opción inválida $_[0]\n"; },
     ) or die "Utilice ./consultas.pl help listado-cbu para obtener ayuda.\n";
 
@@ -389,20 +395,11 @@ sub listado_cbu {
     } elsif( $cbu !~ /^${RE_CBU}$/ ) {
         die "El CBU ingresado no es válido\n";
     }
-    if( not $origen and not $destino ) {
-        die "Se debe indicar si el CBU es de origen o destino.\n"
-    } elsif( $origen and $destino ) {
-        die "Seleccione origen o destino (no ambos).\n"
-    }
 
     my @filtros = @{$_[0]};
 
     # agrega el filtro por CBU
-    if( $origen ) {
-        push @filtros, crear_filtro_origen( $cbu );
-    } else {
-        push @filtros, crear_filtro_destino( $cbu );
-    }
+    push @filtros, crear_filtro_or( crear_filtro_origen( $cbu ), crear_filtro_destino( $cbu ) );
 
     # ejecuta el listado
     print "Transferencias de la cuenta $cbu\n\n";
@@ -484,6 +481,92 @@ sub ranking {
     print join( "\n", map { "$_,$egresos{$_}" } @claves[0..min(2, $#claves)] ) . "\n";
 }
 
+# realiza un balance entre una cierta entidad y otra(s)
+sub balance {
+    my ($filtros, $entidad, @otras) = @_;
+
+    $entidad = codigo2entidad $entidad;
+
+    # si el usuario omite las entidades destino, se realiza el balance contra todas
+    if( scalar @otras == 0 ) {
+        @otras = keys %CODIGOS;
+    } else {
+        @otras = map { codigo2entidad $_ } @otras;
+    }
+
+    # crea un hash con una clave para cada entidad con balance inicial 0
+    my %ingresos = map { $_ => 0 } @otras;
+    my %egresos = map { $_ => 0 } @otras;
+
+    my @archivos = listar_archivos_fuente;
+
+    # agrega un filtro para las otras entidades
+    push @{$filtros}, crear_filtro_or(
+                          factory_filtros_or( \@otras, \&crear_filtro_origen ),
+                          factory_filtros_or( \@otras, \&crear_filtro_destino ));
+    # agrega un filtro para la entidad en particular
+    push @{filtros}, crear_filtro_or(
+                          crear_filtro_origen( $entidad ), crear_filtro_destino( $entidad ));
+
+    # recorre los archivos y las transacciones
+    foreach my $archivo (@archivos) {
+        open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
+
+        # la subrutina acumula el balance para cada entidad
+        iterar_archivo $fp, $filtros, sub {
+                                          my %data = %{$_[0]};
+                                          if( $data{'origen'} eq $data{'destino'} ) {
+                                            return;
+                                          }
+
+                                          # es una transaccion desde una de las entidades?
+                                          if( $data{'origen'} eq $entidad ) {
+                                              $egresos{$data{'destino'}} += $data{'importe'};
+                                          }
+
+                                          # o es hacia una?
+                                          if( $data{'destino'} eq $entidad ) {
+                                              $ingresos{$data{'origen'}} += $data{'importe'};
+                                          }
+                                      };
+    }
+
+    for my $k (@otras) {
+        my ($egreso, $ingreso) = ($egresos{$k}, $ingresos{$k});
+
+        print "Transferencias entre $entidad y $k\n";
+        print "Desde $entidad hacia $k,$egreso\n";
+        print "Desde $k hacia $entidad,$ingreso\n";
+    }
+}
+
+sub balance_entre_entidades {
+    my $filtros = shift;
+    my (@pares, $detalle);
+
+    # TODO: mostrar el detalle de transacciones?
+    GetOptions(
+        '--detalle' => \$detalle,
+        '<>'        => sub{
+                            $_[0] =~ /^(.*)-(.*)$/ or die "Opción inválida $_[0]\n";
+                            my $e1 = codigo2entidad $1;
+                            my $e2 = codigo2entidad $2;
+
+                            if( not $e1 ) {
+                                die "entidad inválida: $e1\n";
+                            } elsif( not $e2 ) {
+                                die "entidad inválida: $e2\n";
+                            }
+
+                            push @pares, $e1, $e2;
+                       },
+    ) or die "Utilice ./consultas.pl help listado-destino para obtener ayuda.\n";
+
+    for my $i (0 .. (scalar @pares / 2 - 1 )) {
+        balance $filtros, $pares[$i], $pares[$i+1];
+    }
+}
+
 sub balance_por_entidad {
     my @entidades;
 
@@ -512,6 +595,8 @@ sub balance_por_entidad {
         # la subrutina acumula el balance para cada entidad
         iterar_archivo $fp, $filtros, sub {
                                           my %data = %{$_[0]};
+
+                                          # transacciones en la misma entidad se ignoran
                                           if( $data{'origen'} eq $data{'destino'} ) {
                                             return;
                                           }
@@ -548,6 +633,7 @@ my %COMANDOS = (
     'listado-cbu'     => \&listado_cbu,
     'ranking'         => \&ranking,
     'balance-entidad' => \&balance_por_entidad,
+    'balance-entre'   => \&balance_entre_entidades,
 );
 
 # variables ingresadas por parámetro
