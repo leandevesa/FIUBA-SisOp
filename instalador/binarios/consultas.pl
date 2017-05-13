@@ -356,7 +356,11 @@ sub listado {
     my $total = 0;
     my @archivos = listar_archivos_fuente;
 
-    print "FECHA,IMPORTE,ESTADO,ORIGEN,DESTINO\n";
+    if( $detalle ) {
+        print "FECHA,IMPORTE,ESTADO,ORIGEN,DESTINO\n";
+    } else {
+        print "FECHA,IMPORTE\n";
+    }
 
     foreach my $archivo (@archivos) {
         my $subtotal = 0;
@@ -389,8 +393,9 @@ sub listado {
 # realiza un listado por CBU
 sub listado_cbu {
     # parsea los argumentos particulares del comando
-    my $cbu;
+    my ($cbu, $detalle);
     GetOptions(
+        'detalle' => \$detalle,
         'cbu=s'   => \$cbu,
         '<>'      => sub{ die "Opción inválida $_[0]\n"; },
     ) or die "Utilice ./consultas.pl help listado-cbu para obtener ayuda.\n";
@@ -409,7 +414,7 @@ sub listado_cbu {
 
     # ejecuta el listado
     print "Transferencias de la cuenta $cbu\n\n";
-    listado \@filtros;
+    listado \@filtros, $detalle;
 }
 
 sub listado_origen {
