@@ -352,6 +352,7 @@ sub iterar_archivos($$$$) {
 # recibe un puntero al array de filtros
 sub listado {
     my $filtros = shift;
+    my $detalle = shift;
     my $total = 0;
     my @archivos = listar_archivos_fuente;
 
@@ -365,18 +366,21 @@ sub listado {
         # la subrutina acumula los montos en el total e imprime las transacciones
         iterar_archivo $fp, $filtros, sub {
                                           my %data = %{$_[0]};
-                                          print join( ',', $data{'fecha'},
-                                                           $data{'importe'},
-                                                           $data{'estado'},
-                                                           $data{'cbu_origen'},
-                                                           $data{'cbu_destino'} ) . "\n";
+                                          if( $detalle ) {
+                                              print join( ',', $data{'fecha'},
+                                                               $data{'importe'},
+                                                               $data{'estado'},
+                                                               $data{'cbu_origen'},
+                                                               $data{'cbu_destino'} ) . "\n";
+                                          }
                                           $total += $data{'importe'};
                                           $subtotal += $data{'importe'};
                                       };
 
         if( $subtotal != 0 ) {
             my ($dia) = $archivo =~ /^\d{6}0?(\d{1,2}).txt/;
-            print "subtotal del día $dia,$subtotal\n\n";
+            print "subtotal del día $dia,$subtotal\n";
+            if( $detalle ) { print "\n"; }
         }
     }
     print "total general,$total\n";
@@ -410,9 +414,10 @@ sub listado_cbu {
 
 sub listado_origen {
     my @filtros = @{$_[0]};
-    my ($entidad, $banco);
+    my ($entidad, $banco, $detalle);
 
     GetOptions(
+        'detalle'   => \$detalle,
         'entidad=s' => \$entidad,
         '<>'      => sub{ die "Opción inválida $_[0]\n"; },
     ) or die "Utilice ./consultas.pl help listado-origen para obtener ayuda.\n";
@@ -427,14 +432,15 @@ sub listado_origen {
 
     # imprime el titulo y genera el listado
     print "Transferencias del banco $banco hacia otras entidades bancarias\n\n";
-    listado \@filtros;
+    listado \@filtros, $detalle;
 }
 
 sub listado_destino {
     my @filtros = @{$_[0]};
-    my ($entidad, $banco);
+    my ($entidad, $banco, $detalle);
 
     GetOptions(
+        'detalle'   => \$detalle,
         'entidad=s' => \$entidad,
         '<>'        => sub{ die "Opción inválida $_[0]\n"; },
     ) or die "Utilice ./consultas.pl help listado-destino para obtener ayuda.\n";
@@ -449,7 +455,7 @@ sub listado_destino {
 
     # imprime el titulo y genera el listado
     print "Transferencias desde otras entidades hacia el banco $banco\n\n";
-    listado \@filtros;
+    listado \@filtros, $detalle;
 }
 
 sub ranking {
