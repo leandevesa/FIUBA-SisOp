@@ -598,12 +598,13 @@ sub balance_por_entidad {
     ) or die "Utilice ./consultas.pl help listado-destino para obtener ayuda.\n";
 
     my $filtros = shift;
-    my (%ingresos, %egresos);
     my @archivos = listar_archivos_fuente;
 
     if( scalar @entidades == 0 ) {
-        @entidades = keys %ENTIDADES;
+        @entidades = keys %CODIGOS;
     }
+
+    my (%ingresos, %egresos) = ((map { $_ => 0 } @entidades), (map { $_ => 0 } @entidades));
 
     # agrega el filtro correspondiente
     push @{$filtros}, crear_filtro_or(
@@ -623,13 +624,13 @@ sub balance_por_entidad {
                                           }
 
                                           # es una transaccion desde una de las entidades?
-                                          if( grep /^$data{'origen'}$/, @entidades ) {
+                                          if( defined $data{'origen'} ) {
                                               $egresos{$data{'origen'}} += $data{'importe'};
                                           }
 
                                           # o es hacia una?
-                                          if( grep /^$data{'destino'}$/, @entidades ) {
-                                              $ingresos{$data{'origen'}} += $data{'importe'};
+                                          if( defined $data{'destino'} ) {
+                                              $ingresos{$data{'destino'}} += $data{'importe'};
                                           }
                                       };
     }
