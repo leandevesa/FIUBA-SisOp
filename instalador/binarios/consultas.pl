@@ -454,7 +454,7 @@ sub ranking {
     GetOptions('<>' => sub { die "El comando ranking no tiene parámetros de entrada.\n" });
 
     my $filtros = shift;
-    my (%ingresos, %egresos);
+    my %balance = map { $_ => 0 } keys %CODIGOS;
     my @archivos = listar_archivos_fuente;
 
     foreach my $archivo (@archivos) {
@@ -464,21 +464,42 @@ sub ranking {
         iterar_archivo $fp, $filtros, sub {
                                           my %data = %{$_[0]};
 
-                                          if( $data{'importe'} > 0 ) {
-                                            $ingresos{$data{'origen'}} += $data{'importe'};
-                                          } else {
-                                            $egresos{$data{'origen'}} += $data{'importe'};
+                                          # se ignoran las transferencias internas
+                                          if( $data{'origen'} eq $data{'destino'} ) {
+                                            return;
                                           }
+
+                                          $balance{$data{'destino'}} += $data{'importe'};
+                                          $balance{$data{'origen'}} -= $data{'importe'};
                                       };
     }
 
+    my @claves = sort { $balance{$b} <=> $balance{$a} } keys(%balance);
+    my (@top_ingresos, @top_egresos);
+
+    for my $entidad (@claves) {
+        if( $balance{$entidad} <= 0 or scalar @top_ingresos == 3 ) {
+            while( scalar @top_ingresos < 3 ) { push @top_ingresos, '-'; }
+            last;
+        }
+        push @top_ingresos, $entidad;
+    }
+
+    for my $entidad (reverse @claves) {
+        if( $balance{$entidad} >= 0 or scalar @top_egresos == 3 ) {
+            while( scalar @top_egresos < 3 ) { push @top_egresos, '-'; }
+            last;
+        }
+        push @top_egresos, $entidad;
+    }
+
+    $balance{'-'} = '-';
+
     print "Top 3 ingresos\n";
-    my @claves = sort { $ingresos{$b} <=> $ingresos{$a} } keys(%ingresos);
-    print join( "\n", map { "$_,$ingresos{$_}" } @claves[0..min(2, $#claves)] ) . "\n";
+    print join( "\n", map { "$_,$balance{$_}" } @top_ingresos ) . "\n";
 
     print "\nTop 3 egresos\n";
-    @claves = sort { $egresos{$a} <=> $egresos{$b} } keys(%egresos);  # el cb de comparacion es distinto!
-    print join( "\n", map { "$_,$egresos{$_}" } @claves[0..min(2, $#claves)] ) . "\n";
+    print join( "\n", map { my $v = abs $balance{$_}; "$_,$v" } @top_egresos ) . "\n";
 }
 
 # realiza un balance entre una cierta entidad y otra(s)
