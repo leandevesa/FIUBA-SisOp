@@ -4,8 +4,11 @@ use warnings;
 use strict;
 use Getopt::Long;
 use Time::Local;
+use List::Util qw(reduce);
 use Data::Dumper;
 
+
+#$SIG{'__DIE__'} = sub { require Carp; Carp::confess };
 
 Getopt::Long::Configure("pass_through");
 
@@ -171,6 +174,8 @@ sub crear_filtro_importe {
 # crea un filtro para una una entidad de origen
 sub crear_filtro_origen {
     my $origen = shift;
+
+    $origen or die "Error!";
 
     if( $origen !~ /^${RE_CBU}$/ ) {
         $origen = entidad2codigo( $origen );
@@ -517,23 +522,23 @@ sub ranking {
 
 # realiza un balance entre una cierta entidad y otra(s)
 sub balance {
-    my ($filtros, $detalle, $entidad, $otra) = @_;
+    my ($filtros, $detalle, $entidad, @otras) = @_;
 
     $entidad = codigo2entidad $entidad;
-    $otra = codigo2entidad $otra;
+    @otras = map { codigo2entidad $_ } @otras;
 
     # crea un hash con una clave para cada entidad con balance inicial 0
-    my $ingresos = 0;
-    my $egresos = 0;
-
+    my %ingresos = map { $_ => 0 } @otras;
+    my %egresos  = map { $_ => 0 } @otras;
     my @archivos = listar_archivos_fuente;
 
     # copia los filtros
     my @filtros = @{$filtros};
 
-    # agrega un filtro para la otra entidade
+    # agrega un filtro para las otras entidades
     push @filtros, crear_filtro_or(
-                          crear_filtro_origen( $otra ), crear_filtro_destino( $otra ));
+                          factory_filtros_or( \@otras, \&crear_filtro_origen ),
+                          factory_filtros_or( \@otras, \&crear_filtro_destino ));
     # agrega un filtro para la entidad en particular
     push @filtros, crear_filtro_or(
                           crear_filtro_origen( $entidad ), crear_filtro_destino( $entidad ));
@@ -559,29 +564,26 @@ sub balance {
 
                                           # es una transaccion desde una de las entidades?
                                           if( $data{'origen'} eq $entidad ) {
-                                              $egresos += $data{'importe'};
+                                              $egresos{$data{'destino'}} += $data{'importe'};
                                           }
 
                                           # o es hacia una?
                                           if( $data{'destino'} eq $entidad ) {
-                                              $ingresos += $data{'importe'};
+                                              $ingresos{$data{'origen'}} += $data{'importe'};
                                           }
                                       };
     }
 
-    print "Desde $entidad hacia $otra,$egresos\n";
-
-    return $ingresos - $egresos;
+    return (\%ingresos, \%egresos);
 }
 
 sub balance_entre_entidades {
     my $filtros = shift;
     my (@pares, $detalle);
 
-    # TODO: mostrar el detalle de transacciones?
     GetOptions(
-        '--detalle' => \$detalle,
-        '<>'        => sub{
+        'detalle' => \$detalle,
+        '<>'      => sub{
                             $_[0] =~ /^(.*)-(.*)$/ or die "Opción inválida $_[0]\n";
                             my $e1 = codigo2entidad $1;
                             my $e2 = codigo2entidad $2;
@@ -599,22 +601,31 @@ sub balance_entre_entidades {
 
     for my $i (0 .. (scalar @pares / 2 - 1 )) {
         $i *= 2;
-        my $balance;
+        my ($entidad1, $entidad2) = ($pares[$i], $pares[$i+1]);
 
-        print "Transferencias entre $pares[$i] y $pares[$i+1]\n";
+        print "Transferencias entre $entidad1 y $entidad2\n";
 
-        $balance = balance $filtros, $detalle, $pares[$i], $pares[$i+1];
-        balance $filtros, $detalle, $pares[$i+1], $pares[$i];
+        my ($ingresos_ref, $egresos_ref) = balance $filtros, $detalle, $entidad1, $entidad2;
+        my %ingresos = %{$ingresos_ref};
+        my %egresos = %{$egresos_ref};
+
+        print "Desde $entidad1 hacia $entidad2,$egresos{$entidad2}\n";
+        my $balance = $ingresos{$entidad2} - $egresos{$entidad2};
+
+        ($ingresos_ref, $egresos_ref) = balance $filtros, $detalle, $entidad2, $entidad1;
+        %ingresos = %{$ingresos_ref};
+        %egresos = %{$egresos_ref};
+
+        print "Desde $entidad2 hacia $entidad1,$egresos{$entidad1}\n";
 
         my $signo = ('NEUTRO', 'POSITIVO', 'NEGATIVO')[$balance <=> 0];
-        print "Balance $signo para $pares[$i],$balance\n\n";
+        print "Balance $signo para $entidad1,$balance\n\n";
     }
 }
 
 sub balance_por_entidad {
     my (@entidades, $detalle);
 
-    # TODO: mostrar el detalle de transacciones?
     GetOptions(
         '--detalle'    => \$detalle,
         '--entidad=s@' => \@entidades,
@@ -628,44 +639,20 @@ sub balance_por_entidad {
         @entidades = keys %CODIGOS;
     }
 
-    my (%ingresos, %egresos) = ((map { $_ => 0 } @entidades), (map { $_ => 0 } @entidades));
-
-    # agrega el filtro correspondiente
-    push @{$filtros}, crear_filtro_or(
-                          factory_filtros_or( \@entidades, \&crear_filtro_origen ),
-                          factory_filtros_or( \@entidades, \&crear_filtro_destino ));
-
-    foreach my $archivo (@archivos) {
-        open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
-
-        # la subrutina acumula el balance para cada entidad
-        iterar_archivo $fp, $filtros, sub {
-                                          my %data = %{$_[0]};
-
-                                          # transacciones en la misma entidad se ignoran
-                                          if( $data{'origen'} eq $data{'destino'} ) {
-                                            return;
-                                          }
-
-                                          # es una transaccion desde una de las entidades?
-                                          if( defined $data{'origen'} ) {
-                                              $egresos{$data{'origen'}} += $data{'importe'};
-                                          }
-
-                                          # o es hacia una?
-                                          if( defined $data{'destino'} ) {
-                                              $ingresos{$data{'destino'}} += $data{'importe'};
-                                          }
-                                      };
-    }
-
     # imprime el resultado por cada entidad
     for my $entidad (sort @entidades) {
-        my ($egreso, $ingreso) = (($egresos{$entidad} or 0), ($ingresos{$entidad} or 0));
+        my ($ingresos, $egresos) = balance $filtros, $detalle, $entidad, keys %CODIGOS;
+
+        my $ingreso = reduce { $a + $b } values %{$ingresos};
+        my $egreso = reduce { $a + $b } values %{$egresos};
+
         my $balance = $ingreso - $egreso;
         my $signo = ('NEUTRO', 'POSITIVO', 'NEGATIVO')[$balance <=> 0];
 
         print "Desde $entidad,$egreso,Hacia otras entidades\n";
+
+        # TODO: imprimir las transferencias desde otras entidades a $entidad
+
         print "Hacia $entidad,$ingreso,Desde otras entidades\n";
         print "Balance $signo para $entidad,$balance\n";
         print "\n";
