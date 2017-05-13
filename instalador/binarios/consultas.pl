@@ -517,29 +517,25 @@ sub ranking {
 
 # realiza un balance entre una cierta entidad y otra(s)
 sub balance {
-    my ($filtros, $entidad, @otras) = @_;
+    my ($filtros, $detalle, $entidad, $otra) = @_;
 
     $entidad = codigo2entidad $entidad;
-
-    # si el usuario omite las entidades destino, se realiza el balance contra todas
-    if( scalar @otras == 0 ) {
-        @otras = keys %CODIGOS;
-    } else {
-        @otras = map { codigo2entidad $_ } @otras;
-    }
+    $otra = codigo2entidad $otra;
 
     # crea un hash con una clave para cada entidad con balance inicial 0
-    my %ingresos = map { $_ => 0 } @otras;
-    my %egresos = map { $_ => 0 } @otras;
+    my $ingresos = 0;
+    my $egresos = 0;
 
     my @archivos = listar_archivos_fuente;
 
-    # agrega un filtro para las otras entidades
-    push @{$filtros}, crear_filtro_or(
-                          factory_filtros_or( \@otras, \&crear_filtro_origen ),
-                          factory_filtros_or( \@otras, \&crear_filtro_destino ));
+    # copia los filtros
+    my @filtros = @{$filtros};
+
+    # agrega un filtro para la otra entidade
+    push @filtros, crear_filtro_or(
+                          crear_filtro_origen( $otra ), crear_filtro_destino( $otra ));
     # agrega un filtro para la entidad en particular
-    push @{filtros}, crear_filtro_or(
+    push @filtros, crear_filtro_or(
                           crear_filtro_origen( $entidad ), crear_filtro_destino( $entidad ));
 
     # recorre los archivos y las transacciones
@@ -547,31 +543,35 @@ sub balance {
         open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
 
         # la subrutina acumula el balance para cada entidad
-        iterar_archivo $fp, $filtros, sub {
+        iterar_archivo $fp, \@filtros, sub {
                                           my %data = %{$_[0]};
                                           if( $data{'origen'} eq $data{'destino'} ) {
                                             return;
                                           }
 
+                                          if( $detalle and $data{'origen'} eq $entidad ) {
+                                              print join( ',', $data{'fecha'},
+                                                               $data{'importe'},
+                                                               $data{'estado'},
+                                                               $data{'cbu_origen'},
+                                                               $data{'cbu_destino'} ) . "\n";
+                                          }
+
                                           # es una transaccion desde una de las entidades?
                                           if( $data{'origen'} eq $entidad ) {
-                                              $egresos{$data{'destino'}} += $data{'importe'};
+                                              $egresos += $data{'importe'};
                                           }
 
                                           # o es hacia una?
                                           if( $data{'destino'} eq $entidad ) {
-                                              $ingresos{$data{'origen'}} += $data{'importe'};
+                                              $ingresos += $data{'importe'};
                                           }
                                       };
     }
 
-    for my $k (@otras) {
-        my ($egreso, $ingreso) = ($egresos{$k}, $ingresos{$k});
+    print "Desde $entidad hacia $otra,$egresos\n";
 
-        print "Transferencias entre $entidad y $k\n";
-        print "Desde $entidad hacia $k,$egreso\n";
-        print "Desde $k hacia $entidad,$ingreso\n";
-    }
+    return $ingresos - $egresos;
 }
 
 sub balance_entre_entidades {
@@ -596,16 +596,27 @@ sub balance_entre_entidades {
                        },
     ) or die "Utilice ./consultas.pl help listado-destino para obtener ayuda.\n";
 
+
     for my $i (0 .. (scalar @pares / 2 - 1 )) {
-        balance $filtros, $pares[$i], $pares[$i+1];
+        $i *= 2;
+        my $balance;
+
+        print "Transferencias entre $pares[$i] y $pares[$i+1]\n";
+
+        $balance = balance $filtros, $detalle, $pares[$i], $pares[$i+1];
+        balance $filtros, $detalle, $pares[$i+1], $pares[$i];
+
+        my $signo = ('NEUTRO', 'POSITIVO', 'NEGATIVO')[$balance <=> 0];
+        print "Balance $signo para $pares[$i],$balance\n\n";
     }
 }
 
 sub balance_por_entidad {
-    my @entidades;
+    my (@entidades, $detalle);
 
     # TODO: mostrar el detalle de transacciones?
     GetOptions(
+        '--detalle'    => \$detalle,
         '--entidad=s@' => \@entidades,
         '<>'           => sub{ die "Opción inválida $_[0]\n"; },
     ) or die "Utilice ./consultas.pl help listado-destino para obtener ayuda.\n";
