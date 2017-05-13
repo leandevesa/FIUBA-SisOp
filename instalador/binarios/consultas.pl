@@ -156,7 +156,7 @@ sub crear_filtro_fuente {
 sub crear_filtro_importe {
     my ($importe, $minimo) = @_;
 
-    $importe =~ /(^\d+\.\d{2}$)|(^\d+$)/ or die "Importe inválido: $importe.\n";
+    $importe =~ /(^-?\d+\.\d{2}$)|(^\-?\d+$)/ or die "Importe inválido: $importe.\n";
 
     return sub {
         my %data = %{$_[0]};
