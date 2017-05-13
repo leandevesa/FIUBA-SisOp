@@ -374,8 +374,10 @@ sub listado {
                                           $subtotal += $data{'importe'};
                                       };
 
-        my ($dia) = $archivo =~ /^\d{6}0?(\d{1,2}).txt/;
-        print "subtotal del día $dia,$subtotal\n\n";
+        if( $subtotal != 0 ) {
+            my ($dia) = $archivo =~ /^\d{6}0?(\d{1,2}).txt/;
+            print "subtotal del día $dia,$subtotal\n\n";
+        }
     }
     print "total general,$total\n";
 }
