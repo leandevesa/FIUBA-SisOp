@@ -4,9 +4,10 @@ set -e
 
 ARCHIVO_LOG="../libs/log.sh"
 
-directorioNovedades=$DIRNOV/
-directorioAceptados=$DIROK/
-directorioRechazados=$DIRREC/
+directorioNovedades=$DIRNOV
+directorioAceptados=$DIROK
+directorioRechazados=$DIRREC
+directorioMaestros=$DIRMAE
 
 contadorCiclos=0
 
@@ -70,12 +71,18 @@ validarFecha(){
 
 validarEntidad(){
 	#si es vacia la entidad que me pasan rechazo.
-	echo entidad:
-	echo $1
+
 	if [ -z $1 ]; then
 		return 1
 	fi
-	return 0
+	listaEntidades=`cat $directorioMaestros/bamae.txt | sed "s/^\([^;]*\).*/\1/"`
+
+	for entidad in $listaEntidades ; do 
+		if [ $entidad = $1 ]; then
+			return 0
+		fi
+	done
+	return 1
 }
 
 validarNombreArchivo(){
@@ -105,26 +112,26 @@ validarArchivo(){
 	fi
 
 	#si el archivo esta vacio lo rechazo directamente
-	if [ ! -s "$directorioNovedades$1" ]; then
+	if [ ! -s "$directorioNovedades/$1" ]; then
 		echo "Archivo $nombreArchivo rechazado: El archivo esta vacio"
 		directorioDestino=$directorioRechazados
 	fi
 
-	if [ -f "$directorioDestino$1" ]; then
+	if [ -f "$directorioDestino/$1" ]; then
 		#ya existe un archivo en el destino con este nombre
 		duplicados="duplicados"
 		# si no existe /duplicados la creo
-		if [ ! -d "$directorioDestino$duplicados" ]; then
-			mkdir "$directorioDestino$duplicados"
+		if [ ! -d "$directorioDestino/$duplicados" ]; then
+			mkdir "$directorioDestino/$duplicados"
 		fi
 
 		numeroDeCopia=0
-		while [ -f "$directorioDestino$duplicados/$nombreArchivo$numeroDeCopia.$extensionArchivo" ]; do
+		while [ -f "$directorioDestino/$duplicados/$nombreArchivo$numeroDeCopia.$extensionArchivo" ]; do
 			numeroDeCopia=$((numeroDeCopia+1))
 		done 
-		mv "$directorioNovedades$1" "$directorioDestino$duplicados/$nombreArchivo$numeroDeCopia.$extensionArchivo"
+		mv "$directorioNovedades/$1" "$directorioDestino/$duplicados/$nombreArchivo$numeroDeCopia.$extensionArchivo"
 	else	
-		mv "$directorioNovedades$1" "$directorioDestino$1"
+		mv "$directorioNovedades/$1" "$directorioDestino/$1"
 	fi
 }
 
