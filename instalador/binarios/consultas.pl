@@ -38,8 +38,40 @@ our %CODIGOS;
 my @filtros;
 
 # muestra el mesaje de ayuda
-# TODO: actualizar
 sub help {
+    my $subcomando = shift @ARGV;
+    if( $subcomando ) {
+        if( $subcomando eq 'help' ) {
+            print "Muestra ayuda sobre un comando.\n";
+        } elsif( $subcomando eq 'listado-origen' ) {
+            print "Lista las transacciones originadas en una cierta entidad.\n";
+            print "  --entidad      Indica la entidad a listar (puede repetirse).\n";
+            print "  --detalle      Mostrar el detalle de las transacciones.\n";
+        } elsif( $subcomando eq 'listado-destino' ) {
+            print "Lista las transacciones hacia una cierta entidad.\n";
+            print "  --entidad      Indica la entidad a listar (puede repetirse).\n";
+            print "  --detalle      Mostrar el detalle de las transacciones.\n";
+        } elsif( $subcomando eq 'listado-cbu' ) {
+            print "Lista las transacciones para una cierta cuenta.\n";
+            print "  --cbu          CBU del cual listar las operaciones.\n";
+            print "  --detalle      Mostrar el detalle de las transacciones.\n";
+        } elsif( $subcomando eq 'ranking' ) {
+            print "Lista las 3 transacciones que mas emitieron y recibieron.\n";
+        } elsif( $subcomando eq 'balance-entidad' ) {
+            print "Realiza un balance entre 1 entidad y todas las demás.\n";
+            print "  --entidad      Entidad a la cual realizar el balance (puede repetirse).\n";
+            print "  --detalle      Mostrar el detalle de las transacciones.\n";
+        } elsif( $subcomando eq 'balance-entre' ) {
+            print "Realiza un balance entre 2 entidades.\n";
+            print "Recibe varios argumentos, los cuales son pares de entidades entre las cuales\n";
+            print "se realiza el balance. Por ejemplo:\n";
+            print "  ./consultas.pl BACOR-HSBC 014-TOKYO\n";
+        } else {
+            die "Subcomando inválido: $subcomando\n";
+        }
+        exit 0;
+    }
+
     print<<EOF;
 Uso: ./consultas.pl [-hfodesuil] COMANDO [PARAMETROS EXTRA]
 
@@ -54,11 +86,29 @@ Parámetros globales (aplican a todos los comandos)
   -e, --estado         Indica el estado por el cual filtrar la consulta (pendiente|anulada).
   -s, --fecha-desde    Indica la fecha de transferencia desde la cual aceptar transacciones.
   -u, --fecha-hasta    Indica la fecha de transferencia hasta la cual aceptar transacciones.
-  -i, --importe-desde  Las transacciones con importe menor al indicado son filtradas (nnnn.nn).
-  -l, --importe-hasta  Las transacciones con importe mayor al indicado son filtradas (nnnn.nn).
+  -i, --importe-desde  Las transacciones con importe menor al indicado son filtradas.
+  -l, --importe-hasta  Las transacciones con importe mayor al indicado son filtradas.
 
 Realiza consultas en las transacciones aplicando los filtros especificados por el usuario.
 Si no se especifica un filtro se incluyen todos los valores posibles para ese campo.
+Las entidades bancarias pueden indicarse mediante el código de 3 dígitos o el nombre corto (p.e.
+013 o BACOR).
+Los importes pueden ser negativos (con el prefijo -) y contener 2 decimales de precisión (p.e.
+100, -50, 150.30).
+Las fechas se ingresan con formato 'aaaammdd' (4 digitos para el año, 2 para el mes y 2 para el
+día). Por ejemplo, 19900811 para el 11/08/1990.
+
+Comandos
+  help
+  listado-origen
+  listado-destino
+  listado-cbu
+  ranking
+  balance-entidad
+  balance-entre
+
+Para ver las opciones específicas de cada comando utilice
+  ./consultas.pl help COMANDO
 EOF
     exit 0;
 }
@@ -469,7 +519,7 @@ sub listado_destino {
 }
 
 sub ranking {
-    GetOptions('<>' => sub { die "El comando ranking no tiene parámetros de entrada.\n" });
+    GetOptions('<>' => sub { die "El comando ranking no acepta parámetros de entrada.\n" });
 
     my $filtros = shift;
     my %balance = map { $_ => 0 } keys %CODIGOS;
@@ -596,7 +646,7 @@ sub balance_entre_entidades {
 
                             push @pares, $e1, $e2;
                        },
-    ) or die "Utilice ./consultas.pl help listado-destino para obtener ayuda.\n";
+    ) or die "Utilice ./consultas.pl help balance-entre para obtener ayuda.\n";
 
 
     for my $i (0 .. (scalar @pares / 2 - 1 )) {
@@ -630,7 +680,7 @@ sub balance_por_entidad {
         '--detalle'    => \$detalle,
         '--entidad=s@' => \@entidades,
         '<>'           => sub{ die "Opción inválida $_[0]\n"; },
-    ) or die "Utilice ./consultas.pl help listado-destino para obtener ayuda.\n";
+    ) or die "Utilice ./consultas.pl help balance-entidad para obtener ayuda.\n";
 
     my $filtros = shift;
     my @archivos = listar_archivos_fuente;
@@ -667,6 +717,7 @@ my %COMANDOS = (
     'ranking'         => \&ranking,
     'balance-entidad' => \&balance_por_entidad,
     'balance-entre'   => \&balance_entre_entidades,
+    'help'            => \&help,
 );
 
 # variables ingresadas por parámetro
