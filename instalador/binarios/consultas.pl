@@ -178,7 +178,6 @@ sub crear_filtro_fecha($$) {
         die "formato de fecha inválido, se espera aaaammdd, se obtuvo $fecha.\n";
     }
 
-    # TODO: verificar que sea una fecha válida
     my ($year, $month, $day) = unpack "A4 A2 A2", $fecha;
     eval{ timelocal(0,0,0,$day, $month-1, $year); 1; } or die "Fecha inválida: $@\n";
 
