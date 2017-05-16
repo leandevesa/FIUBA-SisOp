@@ -33,9 +33,6 @@ our %ENTIDADES;
 # un hash que mappea el nombre de la entidad al código
 our %CODIGOS;
 
-# array de filtros para aplicar a la búsqueda
-# los filtros se arman en base a los parámetros de entrada usando GetOptions
-my @filtros;
 
 # muestra el mesaje de ayuda
 sub help {
@@ -183,13 +180,13 @@ sub crear_filtro_fecha($$) {
 
     if( $superior ) {
         return sub {
-            my %data = %{$_[0]};
-            return ($fecha gt $data{'fecha'} or $fecha eq $data{'fecha'});
+            my ($fecha_fuente) = $_[0] =~ s/\.txt$//r;
+            return ($fecha gt $fecha_fuente or $fecha eq $fecha_fuente);
         };
     } else {
         return sub {
-            my %data = %{$_[0]};
-            return ($fecha lt $data{'fecha'} or $fecha eq $data{'fecha'});
+            my ($fecha_fuente) = $_[0] =~ s/\.txt$//r;
+            return ($fecha lt $fecha_fuente or $fecha eq $fecha_fuente);
         };
     }
 }
@@ -264,22 +261,6 @@ sub crear_filtro_estado {
         my %data = %{$_[0]};
         return $data{'estado'} =~ /^$estado$/;
     };
-}
-
-# crea un filtro para una fecha base y lo agrega al pipeline de filtros
-sub agregar_filtro_fecha_desde {
-    my ($k, $v) = @_;
-
-    my $superior = 0;
-    push @filtros, crear_filtro_fecha( $v, $superior );
-}
-
-# crea un filtro para una fecha final y lo agrega al pipeline de filtros
-sub agregar_filtro_fecha_hasta {
-    my ($k, $v) = @_;
-
-    my $superior = 1;
-    push @filtros, crear_filtro_fecha( $v, $superior );
 }
 
 # loggea un mensaje
@@ -731,8 +712,13 @@ my %COMANDOS = (
     'help'            => \&help,
 );
 
+
+# array de filtros para aplicar a la búsqueda
+# los filtros se arman en base a los parámetros de entrada usando GetOptions
+my @filtros;
+
 # variables ingresadas por parámetro
-my ($subcomando, @fuentes, @origen, @destino, $estado);
+my ($subcomando, @fuentes, @origen, @destino, $estado, $fecha_desde, $fecha_hasta);
 
 # parsea los parámetros de entrada generando los filtros de búsqueda
 GetOptions('help|h'            => \&help,
@@ -740,8 +726,8 @@ GetOptions('help|h'            => \&help,
            'estado|e=s'        => \$estado,
            'origen|o=s'        => \@origen,
            'destino|d=s'       => \@destino,
-           'fecha-desde|s=s'   => \&agregar_filtro_fecha_desde,
-           'fecha-hasta|u=s'   => \&agregar_filtro_fecha_hasta,
+           'fecha-desde|s=s'   => \$fecha_desde,
+           'fecha-hasta|u=s'   => \$fecha_hasta,
            'importe-desde|i=s' => sub { push @filtros, crear_filtro_importe( $_[1], 1 ); },
            'importe-hasta|l=s' => sub { push @filtros, crear_filtro_importe( $_[1], 0 ); },
            "<>"                => sub {
@@ -769,13 +755,6 @@ if( $subcomando ) {
     die "No se indicó ningún comando.\nSe esperaba " . join( "|", keys %COMANDOS ) . "\n";
 }
 
-# crea un filtro para las fuentes
-my @filtros_fuentes;
-if( @fuentes ) {
-    # crea un filtro OR con todos los filtros para fuentes y lo mete en la lista final
-    push @filtros_fuentes, factory_filtros_or( \@fuentes, \&crear_filtro_fuente );
-}
-
 # crea los filtros para aplicar a las transacciones
 # crea un filtro para la entidad de origen
 if( @origen ) {
@@ -789,6 +768,19 @@ if( @destino ) {
 
 if( $estado ) {
     push @filtros, crear_filtro_estado( $estado );
+}
+
+# crea los filtros para las fuentes
+my @filtros_fuentes;
+if( @fuentes ) {
+    # crea un filtro OR con todos los filtros para fuentes y lo mete en la lista final
+    push @filtros_fuentes, factory_filtros_or( \@fuentes, \&crear_filtro_fuente );
+}
+if( $fecha_hasta ) {
+    push @filtros_fuentes, crear_filtro_fecha( $fecha_hasta, 1 );
+}
+if( $fecha_desde ) {
+    push @filtros_fuentes, crear_filtro_fecha( $fecha_desde, 0 );
 }
 
 # obtiene la lista de fuentes
