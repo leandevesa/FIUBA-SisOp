@@ -133,7 +133,7 @@ validarImportesSegunEstado(){
 	# si el total de registrios del archivos no coincide con la suma de la cantidad de registros
 	# de cada estado. entonces hay algun registro invalido, se rechaza el archivo.
 	if ! [ $registrosTotalesLeidos -eq $regTotalesEnArchivo ]; then
-		echo "archivo rechazado por estado invalido"
+		error "archivo rechazado por estado invalido"
 		return 1
 	fi
 
@@ -217,13 +217,13 @@ convertirYEscribirSalida(){
 procesarArchivo(){
 	archivo=$1
 	#		$DIRINFO/transfer
-	echo estoy procesando el archivo. $archivo
+	print "Procesando Archivo: $archivo"
 	#saco la cabecera del archivo
 	registros=`cat $DIROK/$archivo | sed -e 1'd'`
 	for reg in $registros; do
 		convertirYEscribirSalida "$reg" "$archivo"
 	done
-	echo termine de procesar
+	print "Fin proceso"
 
 }
 validarFecha(){
@@ -253,12 +253,10 @@ validarFecha(){
 
 	dif=$(($(($(date -d "$aniof2$mesf2$diaf2" "+%s") - $(date -d "$anio$mes$dia" "+%s"))) / 86400))
 	if [ $dif -lt 0 ]; then
-		echo la fecha $1 - $2 es menor a cero  
 		return 1 
 	fi
 	#no tiene que tener mas de 7 dias de antiguedad con respecto a la fecha del archivo.
 	if [ $dif -gt 7 ]; then
-		echo la fecha $1 - $2 es mayor a 7
 		return 1
 	fi
 	return 0
@@ -278,20 +276,20 @@ validarCampos(){
 	montoTotalInformado=`cat "$DIROK/$archivo" | sed 1'!d' | sed "s/^[^;]*;//" | sed "s/,/./g"`
 	if [ -z $montoTotalInformado ]; then
 		#log
-		echo "Error de formato en registro nro 1 (cabecera)"
+		error "Error de formato en registro nro 1 (cabecera)"
 		return
 	fi
 
 	montoTotal=`calcularMontoTotal "$archivo"`
 
 	if ! [ $montoTotal = $montoTotalInformado ]; then
-		echo rechazar montoTotal distinto montoTotalInformado
+		error "El monto total es diferente al monto informado"
 		rechazarArchivo "$archivo"
 		return
 	fi
 
 	if ! validarImportesSegunEstado $archivo ; then
-		echo rechazar importe invalido segun estado.
+		error "Se rechaza el archivo porque el importe informdao es invalido."
 		rechazarArchivo "$archivo"
 		return
 	fi
