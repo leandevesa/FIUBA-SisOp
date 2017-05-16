@@ -75,7 +75,7 @@ validarEntidad(){
 	if [ -z $1 ]; then
 		return 1
 	fi
-	listaEntidades=`cat $directorioMaestros/bamae.txt | sed "s/^\([^;]*\).*/\1/"`
+	listaEntidades=`cat $directorioMaestros/bancos.csv | sed "s/^\([^;]*\).*/\1/"`
 
 	for entidad in $listaEntidades ; do 
 		if [ $entidad = $1 ]; then

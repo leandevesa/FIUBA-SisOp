@@ -136,7 +136,7 @@ validarImportesSegunEstado(){
 verificarCodigoDeBanco(){
 	codBancoCbu=`echo $1 | sed "s/^\(...\).*/\1/"`
 
-	listaCodEntidades=`cat $DIRMAE/bamae.txt | sed "s/^[^;]*;\([^;]*\).*/\1/"`
+	listaCodEntidades=`cat $DIRMAE/banco.csv | sed "s/^[^;]*;\([^;]*\).*/\1/"`
 
 	for codigo in $listaCodEntidades ; do 
 		if [ $codigo = $codBancoCbu ]; then
