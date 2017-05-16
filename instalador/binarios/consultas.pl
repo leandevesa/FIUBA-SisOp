@@ -1,10 +1,22 @@
 #!/usr/bin/env perl
 
+
+# verifica el entorno
+if( not defined $ENV{'DIRMAE'} or
+    not defined $ENV{'DIRPROC'} or
+    not defined $ENV{'DIRLIBS'} or
+    not defined $ENV{'DIRINFO'} ) {
+    die "No se inicializó el ambiente.\n";
+}
+
+use lib $ENV{'DIRLIBS'};
+use Tee;
 use warnings;
 use strict;
 use Getopt::Long;
 use Time::Local;
 use List::Util qw(reduce);
+use POSIX qw(strftime);
 use Data::Dumper;
 
 
@@ -85,6 +97,9 @@ Parámetros globales (aplican a todos los comandos)
   -u, --fecha-hasta    Indica la fecha de transferencia hasta la cual aceptar transacciones.
   -i, --importe-desde  Las transacciones con importe menor al indicado son filtradas.
   -l, --importe-hasta  Las transacciones con importe mayor al indicado son filtradas.
+  --salida             Guardar el reporte en un archivo.
+  --verbose            Mostrar el reporte por pantalla (se activa por defecto si --salida no está
+                       presente).
 
 Realiza consultas en las transacciones aplicando los filtros especificados por el usuario.
 Si no se especifica un filtro se incluyen todos los valores posibles para ese campo.
@@ -271,6 +286,11 @@ sub logger {
 sub min($$) {
     my ($x, $y) = @_;
     return ($x, $y)[$x > $y];
+}
+
+sub max($$) {
+    my ($x, $y) = @_;
+    return ($x, $y)[$x < $y];
 }
 
 # convierte el codigo de una entidad al nombre correspondiente
@@ -699,6 +719,43 @@ sub balance_por_entidad {
     }
 }
 
+
+my %DIR_REPORTE = (
+    'listado-origen'  => '/listados/',
+    'listado-destino' => '/listados/',
+    'listado-cbu'     => '/listados/',
+    'ranking'         => '/listados/',
+    'balance-entidad' => '/balances/',
+    'balance-entre'   => '/balances/',
+);
+
+sub nombre_reporte {
+    my $subcomando = shift;
+
+    if( not $DIR_REPORTE{$subcomando} ) {
+        die "EL comando $subcomando no soporta la opción --salida.\n";
+    }
+
+    my $datestring = strftime "%Y-%m-%dT%H:%M:%S", localtime;
+    my $dir = $ENV{'DIRINFO'} . $DIR_REPORTE{$subcomando};
+    my @archivos = <$dir/*>;
+    my $seq = 0;
+
+    for my $archivo (@archivos) {
+        if( $archivo =~ /${datestring}\.(\d+)\.txt$/ ) {
+            if( $seq == $1 ) {
+                $seq += 1;
+            } else {
+                $seq = max($seq, $1);
+            }
+        }
+    }
+
+    mkdir $dir unless -d $dir;
+
+    return $dir . $datestring . '.' . $seq . '.txt';
+}
+
 # routinas de cada subcomando
 my %COMANDOS = (
     'listado-origen'  => \&listado_origen,
@@ -711,11 +768,6 @@ my %COMANDOS = (
 );
 
 
-# verifica el entorno
-if( not defined $ENV{'DIRMAE'} or not defined $ENV{'DIRPROC'} ) {
-    die "No se inicializó el ambiente.\n";
-}
-
 # carga los datos del maestro
 leer_maestro_bancos \%ENTIDADES, \%CODIGOS;
 
@@ -725,10 +777,12 @@ leer_maestro_bancos \%ENTIDADES, \%CODIGOS;
 my @filtros;
 
 # variables ingresadas por parámetro
-my ($subcomando, @fuentes, @origen, @destino, $estado, $fecha_desde, $fecha_hasta);
+my ($subcomando, @fuentes, @origen, @destino, $verbose, $salida, $estado, $fecha_desde, $fecha_hasta);
 
 # parsea los parámetros de entrada generando los filtros de búsqueda
 GetOptions('help|h'            => \&help,
+           'verbose'           => \$verbose,
+           'salida'            => \$salida,
            'fuente|f=s@'       => \@fuentes,
            'estado|e=s'        => \$estado,
            'origen|o=s'        => \@origen,
@@ -796,5 +850,21 @@ if( scalar @archivos == 0 ) {
     die "No hay archivos fuentes.\n";
 }
 
+# redirecciona la salida
+my $fp;
+if( $salida ) {
+    open my $fp, '>', nombre_reporte( $subcomando ) or die "No se pudo crear $salida: $!\n";
+    if( $verbose ) {
+        my $tee=IO::Tee->new( $fp, \*STDOUT );
+        select $tee;
+    } else {
+        select $fp;
+    }
+}
+
 # ejecuta el subcomando y se le pasan los filtros gobales
 $cb->( \@filtros, \@archivos );
+
+if( $fp ) {
+    close $fp;
+}
