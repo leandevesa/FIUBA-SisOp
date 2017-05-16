@@ -3,6 +3,7 @@
 set -e
 
 ARCHIVO_LOG="../libs/log.sh"
+ARCHIVO_PID_PROC="$DIRBIN/pid_proc"  # nombre del archivo donde se guarda el pid del daemon
 
 directorioNovedades=$DIRNOV
 directorioAceptados=$DIROK
@@ -111,8 +112,6 @@ validarArchivo(){
 
 	directorioDestino=$directorioAceptados
 
-	echo $extensionArchivo
-
 	if ! [ $extensionArchivo = "csv" ]; then
 		print "error! archivo con extension invalida $1"
 		directorioDestino=$directorioRechazados
@@ -173,21 +172,68 @@ verificarDirectorioNovedades(){
 	fi
 }
 
+procesadorActivo(){
+    if [ -f $ARCHIVO_PID_PROC ] ; then
+        return 0
+    else
+        return 1
+    fi
+}
 verificarDirectorioAceptados(){
-	#cantidadDeArhivos=`ls "$directorioAceptados" | wc -l`
+	nombre=procesarTransferencias.sh
+		
+		# verifica si el procesador ya está corriendo
+	    if procesadorActivo ; then
+			print "El proceso ya se encuentra en ejecucion, invocacion propuesta para la siguiente iteracion"
+			return
+		fi
 
-	#if [ $cantidadDeArhivos -ne 0 ]; then
-		#verifico que no este corriendo.
-	#	if [ no esta corriendo ]; then
-	#		correr procesar archivos 
-	#	else
-	#		print "invocacion propuesta para el siguiente ciclo"
-	#	fi
+		script="$DIRBIN/$nombre"
+
+	    set +e
+
+	    # inicia el proceso en background
+	    nohup $script &> /dev/null &
+	    if [ ! $! ] ; then
+	        error 'No se pudo inicializar el procesador'
+	    else
+	    	set -e
+
+	    	# obtiene y guarda el process ID
+	    	pid=$!
+	    	echo $pid > $ARCHIVO_PID_PROC
+
+	    	print "se inició el procesador con el pid $pid"
+	    fi
+	    set -e
 	#fi
-	return 0
+	#cantidadDeArhivos=`ls "$DIROK" | wc -l`
+	#$DIRBIN/$nombre &
+	#nombre=procesarTransferencias.sh
+	#if ! [ -z `pidof -x $nombre` ]; then
+		#log
+	#	echo "El proceso ya se encuentra en ejecucion, invocacion propuesta para la siguiente iteracion"
+	#	return
+	#fi
+
+	#if [ -f "$DIRBIN/$nombre" ]; then
+		#log
+	#	$DIRBIN/$nombre &
+		#a veces anda a veces no. preguntar.
+	#	echo "proceso procesarTransferencias.sh lanzado con pid" `pidof -x $DIRBIN/$nombre`
+	#else
+	#	echo "No se encuentra el ejecutable en $DIRBIN"
+	#fi
+	#return 0
 }
 
-trap "eval continuar=1" SIGINT SIGTERM
+#para probar, se sale el demonio despues de esto
+ver(){
+	pid=`pidof aaa`
+	echo $pid
+}
+
+#trap "eval continuar=1" SIGINT SIGTERM
 
 print "Daemon iniciado OK"
 
@@ -197,7 +243,8 @@ while [ $continuar -eq 0 ]; do
 	contadorCiclos=$((contadorCiclos + 1))
 	# faltaria grabarlo en el log
     verificarDirectorioNovedades
-    verificarDirectorioAceptados
-    print "Ciclo Numero: $contadorCiclos"
-    sleep 5
+
+   	verificarDirectorioAceptados
+    #ver
+    sleep 1
 done
