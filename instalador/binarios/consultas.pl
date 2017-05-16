@@ -128,8 +128,6 @@ sub leer_maestro_bancos {
     }
 }
 
-leer_maestro_bancos \%ENTIDADES, \%CODIGOS;
-
 
 # recibe un array y una subrutina que fabrica filtros.
 # por cada elemento del array crea un filtro y retorna un filtro OR de todos los anteriormente
@@ -717,6 +715,9 @@ my %COMANDOS = (
 if( not defined $ENV{'DIRMAE'} or not defined $ENV{'DIRPROC'} ) {
     die "No se inicializó el ambiente.\n";
 }
+
+# carga los datos del maestro
+leer_maestro_bancos \%ENTIDADES, \%CODIGOS;
 
 
 # array de filtros para aplicar a la búsqueda
