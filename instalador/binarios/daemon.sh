@@ -71,7 +71,6 @@ validarFecha(){
 
 validarEntidad(){
 	#si es vacia la entidad que me pasan rechazo.
-
 	if [ -z $1 ]; then
 		return 1
 	fi
@@ -91,10 +90,16 @@ validarNombreArchivo(){
 	entidad=`echo $nombreArchivo | sed "s/\([^_]*\)_\(.*\)/\1/"`
 	fecha=`echo $nombreArchivo | sed "s/^[^_]*_//"`
 
-	if validarEntidad $entidad && validarFecha $fecha; then
-		return 0
+	if ! validarEntidad $entidad; then
+		error "archivo $nombreArchivo con entidad inexistente"
+		return 1
 	fi
-	return 1
+
+	if ! validarFecha $fecha ; then
+		error "archivo $nombreArchivo con fecha invalida"
+		return 1
+	fi
+	return 0
 }
 
 validarArchivo(){
@@ -102,23 +107,32 @@ validarArchivo(){
 	extensionArchivo=`echo $1 | sed "s-[^.]*\.\(.*\)-\1-"`
 	nombreArchivo=`echo $1 | sed "s-\([^.]*\)\.\(.*\)-\1-"`
 
-	print "Ciclo Numero: $contadorCiclos . Archivo $nombreArchivo leido"
+	print "Ciclo Numero: $contadorCiclos . Archivo $1 leido"
 
 	directorioDestino=$directorioAceptados
 
+	echo $extensionArchivo
+
+	if ! [ $extensionArchivo = "csv" ]; then
+		print "error! archivo con extension invalida $1"
+		directorioDestino=$directorioRechazados
+	fi
+
 	if ! validarNombreArchivo $nombreArchivo; then
-		echo "Archivo $nombreArchivo rechazado: nombre invalido"
+		#print "error! archivo con nombre invalido $1"
 		directorioDestino=$directorioRechazados
 	fi
 
 	#si el archivo esta vacio lo rechazo directamente
 	if [ ! -s "$directorioNovedades/$1" ]; then
-		echo "Archivo $nombreArchivo rechazado: El archivo esta vacio"
+		print "error! archivo vacio $1"
 		directorioDestino=$directorioRechazados
 	fi
 
 	if [ -f "$directorioDestino/$1" ]; then
 		#ya existe un archivo en el destino con este nombre
+		print "Archivo $1 duplicado en $directorioDestino."
+
 		duplicados="duplicados"
 		# si no existe /duplicados la creo
 		if [ ! -d "$directorioDestino/$duplicados" ]; then
@@ -136,19 +150,41 @@ validarArchivo(){
 }
 
 verificarArchivosNuevos(){
+	#por si hay archivos con espacios configuro el IFS
+	#para que no me los tome como archivos distintos.
+	#me guardo el IFS original.
+	_IFS="$IFS"
+	IFS=$'\n'
+	
 	archivos=`ls "$directorioNovedades"`
 
 	for archivo in $archivos ; do 
 		validarArchivo "$archivo"
 	done
+	#restauro el IFS original.
+	IFS=$_IFS
 }
 
-verificarDirectorio(){
+verificarDirectorioNovedades(){
 	cantidadDeArhivos=`ls "$directorioNovedades" | wc -l`
 
 	if [ $cantidadDeArhivos -ne 0 ]; then
 		verificarArchivosNuevos
 	fi
+}
+
+verificarDirectorioAceptados(){
+	#cantidadDeArhivos=`ls "$directorioAceptados" | wc -l`
+
+	#if [ $cantidadDeArhivos -ne 0 ]; then
+		#verifico que no este corriendo.
+	#	if [ no esta corriendo ]; then
+	#		correr procesar archivos 
+	#	else
+	#		print "invocacion propuesta para el siguiente ciclo"
+	#	fi
+	#fi
+	return 0
 }
 
 trap "eval continuar=1" SIGINT SIGTERM
@@ -159,6 +195,8 @@ continuar=0
 while [ $continuar -eq 0 ]; do
     # TODO: agregar las tareas del daemon
 	contadorCiclos=$((contadorCiclos + 1))
-    verificarDirectorio
-    sleep 1
+	# faltaria grabarlo en el log
+    verificarDirectorioNovedades
+    verificarDirectorioAceptados
+    sleep 5
 done
