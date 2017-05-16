@@ -254,23 +254,16 @@ sub crear_filtro_destino {
 }
 
 sub crear_filtro_estado {
-    my $estado = $_[0];
+    my $estado = lc $_[0];
+
+    if( $estado !~ /^(${RE_ESTADO})$/i ) {
+        die "valor de estado inválido: $estado.\n";
+    }
 
     return sub {
         my %data = %{$_[0]};
-        return $data{'estado'} =~ /^$estado/;
+        return $data{'estado'} =~ /^$estado$/;
     };
-}
-
-# crea un filtro para un estado y lo agrega al pipeline de filtros
-sub agregar_filtro_estado {
-    my ($k, $v) = @_;
-
-    if( $v =~ /^(${RE_ESTADO})$/i ) {
-        push @filtros, crear_filtro_estado( lc $1 );
-    } else {
-        die "valor de estado inválido: $v.\n";
-    }
 }
 
 # crea un filtro para una fecha base y lo agrega al pipeline de filtros
@@ -739,12 +732,12 @@ my %COMANDOS = (
 );
 
 # variables ingresadas por parámetro
-my ($subcomando, @fuentes, @origen, @destino);
+my ($subcomando, @fuentes, @origen, @destino, $estado);
 
 # parsea los parámetros de entrada generando los filtros de búsqueda
 GetOptions('help|h'            => \&help,
            'fuente|f=s@'       => \@fuentes,
-           'estado|e=s@'       => \&agregar_filtro_estado,
+           'estado|e=s'        => \$estado,
            'origen|o=s'        => \@origen,
            'destino|d=s'       => \@destino,
            'fecha-desde|s=s'   => \&agregar_filtro_fecha_desde,
@@ -792,6 +785,10 @@ if( @origen ) {
 # crea un filtro para la entidad de destino
 if( @destino ) {
     push @filtros, factory_filtros_or( \@destino, \&crear_filtro_destino );
+}
+
+if( $estado ) {
+    push @filtros, crear_filtro_estado( $estado );
 }
 
 # obtiene la lista de fuentes
