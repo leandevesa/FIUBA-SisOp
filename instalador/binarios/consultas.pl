@@ -135,8 +135,8 @@ sub leer_maestro_bancos {
         my @campos = split /;/, $linea;
         scalar @campos == 3 or die "Formato del maestro de bancos inesperado.\nLinea $contador: $linea\n";
 
-        $entidades->{$campos[0]} = $campos[1];
-        $codigos->{$campos[1]} = $campos[0];
+        $entidades->{$campos[1]} = $campos[0];
+        $codigos->{$campos[0]} = $campos[1];
         $contador += 1;
     }
 }
@@ -317,7 +317,7 @@ sub codigo2entidad($) {
 sub listar_archivos_fuente {
     my $filtros = shift;
 
-    my $dir = $ENV{'DIRPROC'};
+    my $dir = $ENV{'DIRINFO'} . "/" . "transfer";
     opendir( DIR, $dir ) or die "Directorio inválido: $dir\n";
     my @archivos = grep(/${RE_FECHA}.txt/,readdir(DIR)) or die "No se pudo leer el directorio $dir\n";
     closedir( DIR );
@@ -347,12 +347,13 @@ sub listar_archivos_fuente {
 sub parsear_transaccion {
     my $linea = $_[0];
 
-    if( $linea =~ /^(${RE_FECHA})\.txt;.*?;(\d{3});.*?;(\d{3});${RE_FECHA};(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
+    if( $linea =~ /^(.*?);.*?;(\d{3});.*?;(\d{3});(${RE_FECHA});(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
         # las variables de los matches se tienen que copiar a variables locales o sino se pierden
         # cuando se sale del scope
-        my ($fecha, $origen, $destino, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5, $6, $7);
+        my ($fuente, $origen, $destino, $fecha, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5, $6, $7);
         $importe  =~ s/,/./;
         return (
+            'fuente'      => $fuente,
             'fecha'       => $fecha,
             'importe'     => $importe,
             'estado'      => $estado,

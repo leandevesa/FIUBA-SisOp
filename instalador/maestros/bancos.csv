@@ -1,21 +1,21 @@
-003;BAPRO;Banco De La Provincia De Buenos Aires
-009;BAER;Banco De La Provincia De Entre Rios
-011;CITI;First National City Bank of New York
-012;TOKYO;The Bank Of Tokyo - Mitsubishi Ufj, Ltd.
-013;BACOR;Banco De La Provincia De Cordoba S.A.
-014;HSBC;The Hong Kong and Shanghai Banking Corporation
-015;ICBC;Industrial and Commercial Bank of China
-016;NACION;Banco de la Nacion Argentina
-017;SRIO;Banco Santander Rio
-018;BBVA;Banco Bilbao Vizcaya Argentaria
-023;SVIELLE;Banco Supervielle S.A.
-028;MACRO;Banco Macro
-087;GALICIA;Banco Galicia
-332;BSF;BANCO DE SERVICIOS FINANCIEROS S.A.
-336;BRA;BANCO BRADESCO ARGENTINA S.A.
-338;BST;BANCO DE SERVICIOS Y TRANSACCIONES S.A.
-339;RCI;RCI BANQUE S.A.
-340;BACS;BACS BANCO DE CREDITO Y SECURITIZACION S.A.
-341;MVTA;BANCO MASVENTAS S.A.
-386;NBER;NUEVO BANCO DE ENTRE RIOS S.A.
-389;COL;BANCO COLUMBIA S.A.
+BAPRO;003;Banco De La Provincia De Buenos Aires
+BAER;009;Banco De La Provincia De Entre Rios
+CITI;011;First National City Bank of New York
+TOKYO;012;The Bank Of Tokyo - Mitsubishi Ufj, Ltd.
+BACOR;013;Banco De La Provincia De Cordoba S.A.
+HSBC;014;The Hong Kong and Shanghai Banking Corporation
+ICBC;015;Industrial and Commercial Bank of China
+NACION;016;Banco de la Nacion Argentina
+SRIO;017;Banco Santander Rio
+BBVA;018;Banco Bilbao Vizcaya Argentaria
+SVIELLE;023;Banco Supervielle S.A.
+MACRO;028;Banco Macro
+GALICIA;087;Banco Galicia
+BSF;332;BANCO DE SERVICIOS FINANCIEROS S.A.
+BRA;336;BANCO BRADESCO ARGENTINA S.A.
+BST;338;BANCO DE SERVICIOS Y TRANSACCIONES S.A.
+RCI;339;RCI BANQUE S.A.
+BACS;340;BACS BANCO DE CREDITO Y SECURITIZACION S.A.
+MVTA;341;BANCO MASVENTAS S.A.
+NBER;386;NUEVO BANCO DE ENTRE RIOS S.A.
+COL;389;BANCO COLUMBIA S.A.
