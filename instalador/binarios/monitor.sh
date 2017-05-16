@@ -36,6 +36,27 @@ error()
     exit $rc
 }
 
+# $1 es el valor y $2 es el nombre de la variable
+# valida si la variable tiene asignada algun valor, si no se termina el programa.
+checkVar() {
+    if [ -z "$1" ]
+    then
+        return 1
+    fi
+}
+
+# chequeo si las variables fueron seteadas
+verificarVariables() {
+    checkVar "$DIRBIN" "DIRBIN" || return 1
+    checkVar "$DIRMAE" "DIRMAE" || return 1
+    checkVar "$DIRREC" "DIRREC" || return 1
+    checkVar "$DIROK" "DIROK" || return 1
+    checkVar "$DIRPROC" "DIRPROC" || return 1
+    checkVar "$DIRINFO" "DIRINFO" || return 1
+    checkVar "$DIRLOG" "DIRLOG" || return 1
+    checkVar "$DIRNOV" "DIRNOV" || return 1
+}
+
 mostrar_ayuda()
 {
     echo "Uso: ./`basename "$0"` [-h] start|stop"
@@ -104,16 +125,22 @@ detener_daemon()
     rm $ARCHIVO_PID
 }
 
+# chequeo variables
+if verificarVariables ; then
 
-# maneja los parámetros de entrada
-if [ "$#" -ne 1 ] ; then
-    error 'Se esperaba solamente 1 parámetro.\nUtilice -h para obtener información sobre como utilizar el programa'
+    # maneja los parámetros de entrada
+    if [ "$#" -ne 1 ] ; then
+        error 'Se esperaba solamente 1 parámetro.\nUtilice -h para obtener información sobre como utilizar el programa'
+    fi
+
+    case $1 in
+        -h | --help ) mostrar_ayuda;
+                      exit 0;;
+        start       ) iniciar_daemon;;
+        stop        ) detener_daemon;;
+        *           ) error 'Comando inválido: $1.\nUtilice -h para obtener información sobre como utilizar el programa';;
+    esac
+
+    else
+        echo 'variables no incializadas'
 fi
-
-case $1 in
-    -h | --help ) mostrar_ayuda;
-                  exit 0;;
-    start       ) iniciar_daemon;;
-    stop        ) detener_daemon;;
-    *           ) error 'Comando inválido: $1.\nUtilice -h para obtener información sobre como utilizar el programa';;
-esac
