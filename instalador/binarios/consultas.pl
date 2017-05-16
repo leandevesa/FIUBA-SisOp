@@ -356,7 +356,7 @@ sub parsear_transaccion {
             'fuente'      => $fuente,
             'fecha'       => $fecha,
             'importe'     => $importe,
-            'estado'      => $estado,
+            'estado'      => lc $estado,
             'cbu_origen'  => $cbu_origen,
             'cbu_destino' => $cbu_destino,
             'origen'      => codigo2entidad $origen,
