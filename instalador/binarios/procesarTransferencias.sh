@@ -14,9 +14,16 @@ CANTDIGITOSCBU=22
 print()
 {
     # muestra un mensaje obtenido en $1 por STDOUT
-
     mensaje=$1
     $ARCHIVO_LOG "ProceasdorArchivo" "Info" "$mensaje"
+    echo $mensaje
+}
+
+error()
+{
+    # muestra un mensaje obtenido en $1 por STDOUT
+    mensaje=$1
+    $ARCHIVO_LOG "ProceasdorArchivo" "Error" "$mensaje"
     echo $mensaje
 }
 
@@ -136,7 +143,7 @@ validarImportesSegunEstado(){
 verificarCodigoDeBanco(){
 	codBancoCbu=`echo $1 | sed "s/^\(...\).*/\1/"`
 
-	listaCodEntidades=`cat $DIRMAE/banco.csv | sed "s/^[^;]*;\([^;]*\).*/\1/"`
+	listaCodEntidades=`cat $DIRMAE/bancos.csv | sed "s/^[^;]*;\([^;]*\).*/\1/"`
 
 	for codigo in $listaCodEntidades ; do 
 		if [ $codigo = $codBancoCbu ]; then
@@ -191,11 +198,11 @@ convertirYEscribirSalida(){
 
 	cbuOrigen=`echo $registro | cut -d';' -f4`
 	codEntOrigen=`echo $cbuOrigen | cut -c1-3`
-	entOrigen=`cat $DIRMAE/bancos.csv | grep "^$codEntOrigen" | cut -d';' -f2`
+	entOrigen=`cat $DIRMAE/bancos.csv | grep "^.*;$codEntOrigen" | cut -d';' -f1`
 	
 	cbuDestino=`echo $registro | cut -d';' -f5`
 	codEntDestino=`echo $cbuDestino | cut -c1-3`
-	entDestino=`cat $DIRMAE/bancos.csv | grep "^$codEntDestino" | cut -d';' -f2`
+	entDestino=`cat $DIRMAE/bancos.csv | grep "^.*;$codEntDestino" | cut -d';' -f1`
 
 	fecha=`echo $registro | cut -d';' -f1`
 	importe=`echo $registro | cut -d';' -f2`
@@ -290,17 +297,16 @@ validarCampos(){
 	fi
 
 	if ! validarCBU $archivo ; then
-		echo rechazar CBU invalido
+		error "Registro con CBU invalido en $archivo"
 		rechazarArchivo "$archivo"
 		return
 	fi
 
 	if ! validarFechasRegistros $archivo; then
-		echo rechazar archivo fecha invadlida en registro
+		error "Registro con fecha invalida en $archivo"
 		rechazarArchivo "$archivo"
 		return
 	fi
-	#falta validar fecha de transaaccion.
 	procesarArchivo "$archivo"
 	aceptarArchivo "$archivo"
 }
@@ -315,12 +321,12 @@ verificarEstructura(){
 	cantidadDeRegInformada=`cat "$DIROK/$archivo" | sed -e 1'd' | grep "^.*;.*;.*;.*;.*$" | wc -l`	
 	
 	if [ -z $cabecera ]; then
-		echo "Error: formato de cabecera invalido."
+		error "Formato de cabecera invalido del archivo $archivo."
 		return 1
 	fi
 
 	if ! [ $cantidadDeRegistros -eq $cantidadDeRegInformada ]; then
-		echo "Error: cantidad de registros: leidos: $cantidadDeRegistros Cantidad informada: $cantidadDeRegInformada"
+		error "Cantidad de registros: leidos: $cantidadDeRegistros Cantidad informada: $cantidadDeRegInformada"
 		return 1
 	fi
 	validarCampos $archivo
@@ -339,7 +345,7 @@ procesarArchivos(){
 		fi
 		if fueProcesado "$archivo" ; then
 			#log
-			echo "El archivo ya fue procesadodo $archivo"
+			print "El archivo $archivo ya fue procesadodo."
 			rechazarArchivo "$archivo" "El archivo ya fue procesado."
 		else
 			verificarEstructura "$archivo"
