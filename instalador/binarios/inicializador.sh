@@ -44,6 +44,7 @@ setVariablesDeEntorno() {
     DIRINFO=`config_get $FILECONF REPORTES`
     DIRLOG=`config_get $FILECONF LOGS`
     DIRNOV=`config_get $FILECONF NOVEDADES`
+    DIRLIBS=`readlink -m "../libs/log.sh"`
 }
 
 # inicializo variables

@@ -1,10 +1,22 @@
 #!/usr/bin/env perl
 
+
+# verifica el entorno
+if( not defined $ENV{'DIRMAE'} or
+    not defined $ENV{'DIRPROC'} or
+    not defined $ENV{'DIRLIBS'} or
+    not defined $ENV{'DIRINFO'} ) {
+    die "No se inicializó el ambiente.\n";
+}
+
+use lib $ENV{'DIRLIBS'};
+use Tee;
 use warnings;
 use strict;
 use Getopt::Long;
 use Time::Local;
 use List::Util qw(reduce);
+use POSIX qw(strftime);
 use Data::Dumper;
 
 
@@ -33,9 +45,6 @@ our %ENTIDADES;
 # un hash que mappea el nombre de la entidad al código
 our %CODIGOS;
 
-# array de filtros para aplicar a la búsqueda
-# los filtros se arman en base a los parámetros de entrada usando GetOptions
-my @filtros;
 
 # muestra el mesaje de ayuda
 sub help {
@@ -88,6 +97,9 @@ Parámetros globales (aplican a todos los comandos)
   -u, --fecha-hasta    Indica la fecha de transferencia hasta la cual aceptar transacciones.
   -i, --importe-desde  Las transacciones con importe menor al indicado son filtradas.
   -l, --importe-hasta  Las transacciones con importe mayor al indicado son filtradas.
+  --salida             Guardar el reporte en un archivo.
+  --verbose            Mostrar el reporte por pantalla (se activa por defecto si --salida no está
+                       presente).
 
 Realiza consultas en las transacciones aplicando los filtros especificados por el usuario.
 Si no se especifica un filtro se incluyen todos los valores posibles para ese campo.
@@ -130,8 +142,6 @@ sub leer_maestro_bancos {
         $contador += 1;
     }
 }
-
-leer_maestro_bancos \%ENTIDADES, \%CODIGOS;
 
 
 # recibe un array y una subrutina que fabrica filtros.
@@ -183,13 +193,13 @@ sub crear_filtro_fecha($$) {
 
     if( $superior ) {
         return sub {
-            my %data = %{$_[0]};
-            return ($fecha gt $data{'fecha'} or $fecha eq $data{'fecha'});
+            my ($fecha_fuente) = $_[0] =~ s/\.txt$//r;
+            return ($fecha gt $fecha_fuente or $fecha eq $fecha_fuente);
         };
     } else {
         return sub {
-            my %data = %{$_[0]};
-            return ($fecha lt $data{'fecha'} or $fecha eq $data{'fecha'});
+            my ($fecha_fuente) = $_[0] =~ s/\.txt$//r;
+            return ($fecha lt $fecha_fuente or $fecha eq $fecha_fuente);
         };
     }
 }
@@ -198,9 +208,12 @@ sub crear_filtro_fecha($$) {
 sub crear_filtro_fuente {
     my $fuente = $_[0];
 
+    if( $fuente !~ /^${RE_FECHA}.txt$/ ) {
+        die "Los nombres de fuentes deben tener el formato 'aaaammdd.txt'\n";
+    }
+
     return sub {
-        my %data = %{$_[0]};
-        return $data{'fuente'} =~ /^$fuente/;
+        return $_[0] eq $fuente;
     };
 }
 
@@ -251,39 +264,16 @@ sub crear_filtro_destino {
 }
 
 sub crear_filtro_estado {
-    my $estado = $_[0];
+    my $estado = lc $_[0];
+
+    if( $estado !~ /^(${RE_ESTADO})$/i ) {
+        die "valor de estado inválido: $estado.\n";
+    }
 
     return sub {
         my %data = %{$_[0]};
-        return $data{'estado'} =~ /^$estado/;
+        return $data{'estado'} =~ /^$estado$/;
     };
-}
-
-# crea un filtro para un estado y lo agrega al pipeline de filtros
-sub agregar_filtro_estado {
-    my ($k, $v) = @_;
-
-    if( $v =~ /^(${RE_ESTADO})$/i ) {
-        push @filtros, crear_filtro_estado( lc $1 );
-    } else {
-        die "valor de estado inválido: $v.\n";
-    }
-}
-
-# crea un filtro para una fecha base y lo agrega al pipeline de filtros
-sub agregar_filtro_fecha_desde {
-    my ($k, $v) = @_;
-
-    my $superior = 0;
-    push @filtros, crear_filtro_fecha( $v, $superior );
-}
-
-# crea un filtro para una fecha final y lo agrega al pipeline de filtros
-sub agregar_filtro_fecha_hasta {
-    my ($k, $v) = @_;
-
-    my $superior = 1;
-    push @filtros, crear_filtro_fecha( $v, $superior );
 }
 
 # loggea un mensaje
@@ -296,6 +286,11 @@ sub logger {
 sub min($$) {
     my ($x, $y) = @_;
     return ($x, $y)[$x > $y];
+}
+
+sub max($$) {
+    my ($x, $y) = @_;
+    return ($x, $y)[$x < $y];
 }
 
 # convierte el codigo de una entidad al nombre correspondiente
@@ -320,13 +315,30 @@ sub codigo2entidad($) {
     return $rv;
 }
 
+# retorna los archivos fuente a analizar recibe como parametro una lista de filtros para los archivos
 sub listar_archivos_fuente {
-    # TODO: buscar los archivos que estan en el rango correcto de fechas
+    my $filtros = shift;
+
     opendir( DIR, $DIR_TRANSFER );
     my @archivos = grep(/${RE_FECHA}.txt/,readdir(DIR));
     closedir( DIR );
 
-    return @archivos;
+    my @filtrados;
+
+    ARCHIVO:
+    for my $archivo (@archivos) {
+        # pasa nombre del archivo por los filtros
+        for my $f (@{$filtros}) {
+            if( not $f->( $archivo ) ) {
+                # si el filtro no aprueba, se ignora
+                next ARCHIVO;
+            }
+        }
+        # todos los filtros pasaron
+        push @filtrados, $archivo;
+    }
+
+    return sort @filtrados;
 }
 
 # parsea una transaccion desde una linea leida del archivo
@@ -336,14 +348,11 @@ sub listar_archivos_fuente {
 sub parsear_transaccion {
     my $linea = $_[0];
 
-    # TODO: parsear el formato correcto de entrada (faltan campos)
-    if( $linea =~ /^(${RE_FECHA});(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
+    if( $linea =~ /^(${RE_FECHA});.*?;(\d{3});.*?;(\d{3});${RE_FECHA};(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
         # las variables de los matches se tienen que copiar a variables locales o sino se pierden
         # cuando se sale del scope
-        my ($fecha, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5);
+        my ($fecha, $origen, $destino, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5, $6, $7);
         $importe  =~ s/,/./;
-        my ($origen) = $cbu_origen =~ /^(\d{3})/;
-        my ($destino) = $cbu_destino =~ /^(\d{3})/;
         return (
             'fecha'       => $fecha,
             'importe'     => $importe,
@@ -354,7 +363,7 @@ sub parsear_transaccion {
             'destino'     => codigo2entidad $destino,
         );
     } else {
-        return 0;
+        return ();
     }
 }
 
@@ -405,10 +414,9 @@ sub iterar_archivos($$$$) {
 # subcomando para generar listados
 # recibe un puntero al array de filtros
 sub listado {
-    my $filtros = shift;
-    my $detalle = shift;
+    my ($filtros, $fuentes, $detalle) = @_;
     my $total = 0;
-    my @archivos = listar_archivos_fuente;
+    my @archivos = @{$fuentes};
 
     if( $detalle ) {
         print "FECHA,IMPORTE,ESTADO,ORIGEN,DESTINO\n";
@@ -462,17 +470,19 @@ sub listado_cbu {
     }
 
     my @filtros = @{$_[0]};
+    my $fuentes = $_[1];
 
     # agrega el filtro por CBU
     push @filtros, crear_filtro_or( crear_filtro_origen( $cbu ), crear_filtro_destino( $cbu ) );
 
     # ejecuta el listado
     print "Transferencias de la cuenta $cbu\n\n";
-    listado \@filtros, $detalle;
+    listado \@filtros, $fuentes, $detalle;
 }
 
 sub listado_origen {
     my @filtros = @{$_[0]};
+    my $fuentes = $_[1];
     my ($entidad, $banco, $detalle);
 
     GetOptions(
@@ -491,11 +501,12 @@ sub listado_origen {
 
     # imprime el titulo y genera el listado
     print "Transferencias del banco $banco hacia otras entidades bancarias\n\n";
-    listado \@filtros, $detalle;
+    listado \@filtros, $fuentes, $detalle;
 }
 
 sub listado_destino {
     my @filtros = @{$_[0]};
+    my $fuentes = $_[1];
     my ($entidad, $banco, $detalle);
 
     GetOptions(
@@ -514,15 +525,15 @@ sub listado_destino {
 
     # imprime el titulo y genera el listado
     print "Transferencias desde otras entidades hacia el banco $banco\n\n";
-    listado \@filtros, $detalle;
+    listado \@filtros, $fuentes, $detalle;
 }
 
 sub ranking {
     GetOptions('<>' => sub { die "El comando ranking no acepta parámetros de entrada.\n" });
 
-    my $filtros = shift;
+    my ($filtros, $fuentes) = @_;
     my %balance = map { $_ => 0 } keys %CODIGOS;
-    my @archivos = listar_archivos_fuente;
+    my @archivos = @{$fuentes};
 
     foreach my $archivo (@archivos) {
         open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
@@ -571,7 +582,7 @@ sub ranking {
 
 # realiza un balance entre una cierta entidad y otra(s)
 sub balance {
-    my ($filtros, $detalle, $entidad, @otras) = @_;
+    my ($filtros, $fuentes, $detalle, $entidad, @otras) = @_;
 
     $entidad = codigo2entidad $entidad;
     @otras = map { codigo2entidad $_ } @otras;
@@ -579,7 +590,7 @@ sub balance {
     # crea un hash con una clave para cada entidad con balance inicial 0
     my %ingresos = map { $_ => 0 } @otras;
     my %egresos  = map { $_ => 0 } @otras;
-    my @archivos = listar_archivos_fuente;
+    my @archivos = @{$fuentes};
 
     # copia los filtros
     my @filtros = @{$filtros};
@@ -627,7 +638,7 @@ sub balance {
 }
 
 sub balance_entre_entidades {
-    my $filtros = shift;
+    my ($filtros, $fuentes) = @_;
     my (@pares, $detalle);
 
     GetOptions(
@@ -654,14 +665,14 @@ sub balance_entre_entidades {
 
         print "Transferencias entre $entidad1 y $entidad2\n";
 
-        my ($ingresos_ref, $egresos_ref) = balance $filtros, $detalle, $entidad1, $entidad2;
+        my ($ingresos_ref, $egresos_ref) = balance $filtros, $fuentes, $detalle, $entidad1, $entidad2;
         my %ingresos = %{$ingresos_ref};
         my %egresos = %{$egresos_ref};
 
         print "Desde $entidad1 hacia $entidad2,$egresos{$entidad2}\n";
         my $balance = $ingresos{$entidad2} - $egresos{$entidad2};
 
-        ($ingresos_ref, $egresos_ref) = balance $filtros, $detalle, $entidad2, $entidad1;
+        ($ingresos_ref, $egresos_ref) = balance $filtros, $fuentes, $detalle, $entidad2, $entidad1;
         %ingresos = %{$ingresos_ref};
         %egresos = %{$egresos_ref};
 
@@ -681,8 +692,8 @@ sub balance_por_entidad {
         '<>'           => sub{ die "Opción inválida $_[0]\n"; },
     ) or die "Utilice ./consultas.pl help balance-entidad para obtener ayuda.\n";
 
-    my $filtros = shift;
-    my @archivos = listar_archivos_fuente;
+    my ($filtros, $fuentes) = @_;
+    my @archivos = @{$fuentes};
 
     if( scalar @entidades == 0 ) {
         @entidades = keys %CODIGOS;
@@ -708,6 +719,43 @@ sub balance_por_entidad {
     }
 }
 
+
+my %DIR_REPORTE = (
+    'listado-origen'  => '/listados/',
+    'listado-destino' => '/listados/',
+    'listado-cbu'     => '/listados/',
+    'ranking'         => '/listados/',
+    'balance-entidad' => '/balances/',
+    'balance-entre'   => '/balances/',
+);
+
+sub nombre_reporte {
+    my $subcomando = shift;
+
+    if( not $DIR_REPORTE{$subcomando} ) {
+        die "EL comando $subcomando no soporta la opción --salida.\n";
+    }
+
+    my $datestring = strftime "%Y-%m-%dT%H:%M:%S", localtime;
+    my $dir = $ENV{'DIRINFO'} . $DIR_REPORTE{$subcomando};
+    my @archivos = <$dir/*>;
+    my $seq = 0;
+
+    for my $archivo (@archivos) {
+        if( $archivo =~ /${datestring}\.(\d+)\.txt$/ ) {
+            if( $seq == $1 ) {
+                $seq += 1;
+            } else {
+                $seq = max($seq, $1);
+            }
+        }
+    }
+
+    mkdir $dir unless -d $dir;
+
+    return $dir . $datestring . '.' . $seq . '.txt';
+}
+
 # routinas de cada subcomando
 my %COMANDOS = (
     'listado-origen'  => \&listado_origen,
@@ -719,17 +767,28 @@ my %COMANDOS = (
     'help'            => \&help,
 );
 
+
+# carga los datos del maestro
+leer_maestro_bancos \%ENTIDADES, \%CODIGOS;
+
+
+# array de filtros para aplicar a la búsqueda
+# los filtros se arman en base a los parámetros de entrada usando GetOptions
+my @filtros;
+
 # variables ingresadas por parámetro
-my ($subcomando, @fuentes, @origen, @destino);
+my ($subcomando, @fuentes, @origen, @destino, $verbose, $salida, $estado, $fecha_desde, $fecha_hasta);
 
 # parsea los parámetros de entrada generando los filtros de búsqueda
 GetOptions('help|h'            => \&help,
+           'verbose'           => \$verbose,
+           'salida'            => \$salida,
            'fuente|f=s@'       => \@fuentes,
-           'estado|e=s@'       => \&agregar_filtro_estado,
+           'estado|e=s'        => \$estado,
            'origen|o=s'        => \@origen,
            'destino|d=s'       => \@destino,
-           'fecha-desde|s=s'   => \&agregar_filtro_fecha_desde,
-           'fecha-hasta|u=s'   => \&agregar_filtro_fecha_hasta,
+           'fecha-desde|s=s'   => \$fecha_desde,
+           'fecha-hasta|u=s'   => \$fecha_hasta,
            'importe-desde|i=s' => sub { push @filtros, crear_filtro_importe( $_[1], 1 ); },
            'importe-hasta|l=s' => sub { push @filtros, crear_filtro_importe( $_[1], 0 ); },
            "<>"                => sub {
@@ -758,12 +817,6 @@ if( $subcomando ) {
 }
 
 # crea los filtros para aplicar a las transacciones
-# crea un filtro para las fuentes
-if( @fuentes ) {
-    # crea un filtro OR con todos los filtros para fuentes y lo mete en la lista final
-    push @filtros, factory_filtros_or( \@fuentes, \&crear_filtro_fuente );
-}
-
 # crea un filtro para la entidad de origen
 if( @origen ) {
     push @filtros, factory_filtros_or( \@origen, \&crear_filtro_origen );
@@ -774,5 +827,44 @@ if( @destino ) {
     push @filtros, factory_filtros_or( \@destino, \&crear_filtro_destino );
 }
 
+if( $estado ) {
+    push @filtros, crear_filtro_estado( $estado );
+}
+
+# crea los filtros para las fuentes
+my @filtros_fuentes;
+if( @fuentes ) {
+    # crea un filtro OR con todos los filtros para fuentes y lo mete en la lista final
+    push @filtros_fuentes, factory_filtros_or( \@fuentes, \&crear_filtro_fuente );
+}
+if( $fecha_hasta ) {
+    push @filtros_fuentes, crear_filtro_fecha( $fecha_hasta, 1 );
+}
+if( $fecha_desde ) {
+    push @filtros_fuentes, crear_filtro_fecha( $fecha_desde, 0 );
+}
+
+# obtiene la lista de fuentes
+my @archivos = listar_archivos_fuente \@filtros_fuentes;
+if( scalar @archivos == 0 ) {
+    die "No hay archivos fuentes.\n";
+}
+
+# redirecciona la salida
+my $fp;
+if( $salida ) {
+    open my $fp, '>', nombre_reporte( $subcomando ) or die "No se pudo crear $salida: $!\n";
+    if( $verbose ) {
+        my $tee=IO::Tee->new( $fp, \*STDOUT );
+        select $tee;
+    } else {
+        select $fp;
+    }
+}
+
 # ejecuta el subcomando y se le pasan los filtros gobales
-$cb->( \@filtros );
+$cb->( \@filtros, \@archivos );
+
+if( $fp ) {
+    close $fp;
+}
