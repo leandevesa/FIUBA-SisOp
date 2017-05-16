@@ -713,6 +713,12 @@ my %COMANDOS = (
 );
 
 
+# verifica el entorno
+if( not defined $ENV{'DIRMAE'} or not defined $ENV{'DIRPROC'} ) {
+    die "No se inicializó el ambiente.\n";
+}
+
+
 # array de filtros para aplicar a la búsqueda
 # los filtros se arman en base a los parámetros de entrada usando GetOptions
 my @filtros;
