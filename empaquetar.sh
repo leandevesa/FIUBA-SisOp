@@ -22,7 +22,7 @@ mkdir /tmp/TP
 mkdir /tmp/TP/Grupo02
 mkdir /tmp/TP/dirconf
 cp instalador.sh /tmp/TP
-cp README.md /tmp/TP
+cp Readme.txt /tmp/TP
 cp -r instalador /tmp/TP/
 
 tar -czvf $NOMBRE_PAQUETE -C /tmp/TP .
