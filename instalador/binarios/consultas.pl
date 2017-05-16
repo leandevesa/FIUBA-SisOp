@@ -198,9 +198,12 @@ sub crear_filtro_fecha($$) {
 sub crear_filtro_fuente {
     my $fuente = $_[0];
 
+    if( $fuente !~ /^${RE_FECHA}.txt$/ ) {
+        die "Los nombres de fuentes deben tener el formato 'aaaammdd.txt'\n";
+    }
+
     return sub {
-        my %data = %{$_[0]};
-        return $data{'fuente'} =~ /^$fuente/;
+        return $_[0] eq $fuente;
     };
 }
 
@@ -320,13 +323,30 @@ sub codigo2entidad($) {
     return $rv;
 }
 
+# retorna los archivos fuente a analizar recibe como parametro una lista de filtros para los archivos
 sub listar_archivos_fuente {
-    # TODO: buscar los archivos que estan en el rango correcto de fechas
+    my $filtros = shift;
+
     opendir( DIR, $DIR_TRANSFER );
     my @archivos = grep(/${RE_FECHA}.txt/,readdir(DIR));
     closedir( DIR );
 
-    return @archivos;
+    my @filtrados;
+
+    ARCHIVO:
+    for my $archivo (@archivos) {
+        # pasa nombre del archivo por los filtros
+        for my $f (@{$filtros}) {
+            if( not $f->( $archivo ) ) {
+                # si el filtro no aprueba, se ignora
+                next ARCHIVO;
+            }
+        }
+        # todos los filtros pasaron
+        push @filtrados, $archivo;
+    }
+
+    return sort @filtrados;
 }
 
 # parsea una transaccion desde una linea leida del archivo
@@ -336,14 +356,11 @@ sub listar_archivos_fuente {
 sub parsear_transaccion {
     my $linea = $_[0];
 
-    # TODO: parsear el formato correcto de entrada (faltan campos)
-    if( $linea =~ /^(${RE_FECHA});(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
+    if( $linea =~ /^(${RE_FECHA});.*?;(\d{3});.*?;(\d{3});${RE_FECHA};(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
         # las variables de los matches se tienen que copiar a variables locales o sino se pierden
         # cuando se sale del scope
-        my ($fecha, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5);
+        my ($fecha, $origen, $destino, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5, $6, $7);
         $importe  =~ s/,/./;
-        my ($origen) = $cbu_origen =~ /^(\d{3})/;
-        my ($destino) = $cbu_destino =~ /^(\d{3})/;
         return (
             'fecha'       => $fecha,
             'importe'     => $importe,
@@ -354,7 +371,7 @@ sub parsear_transaccion {
             'destino'     => codigo2entidad $destino,
         );
     } else {
-        return 0;
+        return ();
     }
 }
 
@@ -405,10 +422,9 @@ sub iterar_archivos($$$$) {
 # subcomando para generar listados
 # recibe un puntero al array de filtros
 sub listado {
-    my $filtros = shift;
-    my $detalle = shift;
+    my ($filtros, $fuentes, $detalle) = @_;
     my $total = 0;
-    my @archivos = listar_archivos_fuente;
+    my @archivos = @{$fuentes};
 
     if( $detalle ) {
         print "FECHA,IMPORTE,ESTADO,ORIGEN,DESTINO\n";
@@ -462,17 +478,19 @@ sub listado_cbu {
     }
 
     my @filtros = @{$_[0]};
+    my $fuentes = $_[1];
 
     # agrega el filtro por CBU
     push @filtros, crear_filtro_or( crear_filtro_origen( $cbu ), crear_filtro_destino( $cbu ) );
 
     # ejecuta el listado
     print "Transferencias de la cuenta $cbu\n\n";
-    listado \@filtros, $detalle;
+    listado \@filtros, $fuentes, $detalle;
 }
 
 sub listado_origen {
     my @filtros = @{$_[0]};
+    my $fuentes = $_[1];
     my ($entidad, $banco, $detalle);
 
     GetOptions(
@@ -491,11 +509,12 @@ sub listado_origen {
 
     # imprime el titulo y genera el listado
     print "Transferencias del banco $banco hacia otras entidades bancarias\n\n";
-    listado \@filtros, $detalle;
+    listado \@filtros, $fuentes, $detalle;
 }
 
 sub listado_destino {
     my @filtros = @{$_[0]};
+    my $fuentes = $_[1];
     my ($entidad, $banco, $detalle);
 
     GetOptions(
@@ -514,15 +533,15 @@ sub listado_destino {
 
     # imprime el titulo y genera el listado
     print "Transferencias desde otras entidades hacia el banco $banco\n\n";
-    listado \@filtros, $detalle;
+    listado \@filtros, $fuentes, $detalle;
 }
 
 sub ranking {
     GetOptions('<>' => sub { die "El comando ranking no acepta parámetros de entrada.\n" });
 
-    my $filtros = shift;
+    my ($filtros, $fuentes) = @_;
     my %balance = map { $_ => 0 } keys %CODIGOS;
-    my @archivos = listar_archivos_fuente;
+    my @archivos = @{$fuentes};
 
     foreach my $archivo (@archivos) {
         open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
@@ -571,7 +590,7 @@ sub ranking {
 
 # realiza un balance entre una cierta entidad y otra(s)
 sub balance {
-    my ($filtros, $detalle, $entidad, @otras) = @_;
+    my ($filtros, $fuentes, $detalle, $entidad, @otras) = @_;
 
     $entidad = codigo2entidad $entidad;
     @otras = map { codigo2entidad $_ } @otras;
@@ -579,7 +598,7 @@ sub balance {
     # crea un hash con una clave para cada entidad con balance inicial 0
     my %ingresos = map { $_ => 0 } @otras;
     my %egresos  = map { $_ => 0 } @otras;
-    my @archivos = listar_archivos_fuente;
+    my @archivos = @{$fuentes};
 
     # copia los filtros
     my @filtros = @{$filtros};
@@ -627,7 +646,7 @@ sub balance {
 }
 
 sub balance_entre_entidades {
-    my $filtros = shift;
+    my ($filtros, $fuentes) = @_;
     my (@pares, $detalle);
 
     GetOptions(
@@ -654,14 +673,14 @@ sub balance_entre_entidades {
 
         print "Transferencias entre $entidad1 y $entidad2\n";
 
-        my ($ingresos_ref, $egresos_ref) = balance $filtros, $detalle, $entidad1, $entidad2;
+        my ($ingresos_ref, $egresos_ref) = balance $filtros, $fuentes, $detalle, $entidad1, $entidad2;
         my %ingresos = %{$ingresos_ref};
         my %egresos = %{$egresos_ref};
 
         print "Desde $entidad1 hacia $entidad2,$egresos{$entidad2}\n";
         my $balance = $ingresos{$entidad2} - $egresos{$entidad2};
 
-        ($ingresos_ref, $egresos_ref) = balance $filtros, $detalle, $entidad2, $entidad1;
+        ($ingresos_ref, $egresos_ref) = balance $filtros, $fuentes, $detalle, $entidad2, $entidad1;
         %ingresos = %{$ingresos_ref};
         %egresos = %{$egresos_ref};
 
@@ -681,8 +700,8 @@ sub balance_por_entidad {
         '<>'           => sub{ die "Opción inválida $_[0]\n"; },
     ) or die "Utilice ./consultas.pl help balance-entidad para obtener ayuda.\n";
 
-    my $filtros = shift;
-    my @archivos = listar_archivos_fuente;
+    my ($filtros, $fuentes) = @_;
+    my @archivos = @{$fuentes};
 
     if( scalar @entidades == 0 ) {
         @entidades = keys %CODIGOS;
@@ -757,13 +776,14 @@ if( $subcomando ) {
     die "No se indicó ningún comando.\nSe esperaba " . join( "|", keys %COMANDOS ) . "\n";
 }
 
-# crea los filtros para aplicar a las transacciones
 # crea un filtro para las fuentes
+my @filtros_fuentes;
 if( @fuentes ) {
     # crea un filtro OR con todos los filtros para fuentes y lo mete en la lista final
-    push @filtros, factory_filtros_or( \@fuentes, \&crear_filtro_fuente );
+    push @filtros_fuentes, factory_filtros_or( \@fuentes, \&crear_filtro_fuente );
 }
 
+# crea los filtros para aplicar a las transacciones
 # crea un filtro para la entidad de origen
 if( @origen ) {
     push @filtros, factory_filtros_or( \@origen, \&crear_filtro_origen );
@@ -774,5 +794,11 @@ if( @destino ) {
     push @filtros, factory_filtros_or( \@destino, \&crear_filtro_destino );
 }
 
+# obtiene la lista de fuentes
+my @archivos = listar_archivos_fuente \@filtros_fuentes;
+if( scalar @archivos == 0 ) {
+    die "No hay archivos fuentes.\n";
+}
+
 # ejecuta el subcomando y se le pasan los filtros gobales
-$cb->( \@filtros );
+$cb->( \@filtros, \@archivos );
