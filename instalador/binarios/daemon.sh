@@ -198,5 +198,6 @@ while [ $continuar -eq 0 ]; do
 	# faltaria grabarlo en el log
     verificarDirectorioNovedades
     verificarDirectorioAceptados
+    print "Ciclo Numero: $contadorCiclos"
     sleep 5
 done
