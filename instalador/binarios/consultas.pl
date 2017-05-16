@@ -350,7 +350,7 @@ sub parsear_transaccion {
     if( $linea =~ /^(.*?);.*?;(\d{3});.*?;(\d{3});(${RE_FECHA});(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
         # las variables de los matches se tienen que copiar a variables locales o sino se pierden
         # cuando se sale del scope
-        my ($fuente, $origen, $destino, $fecha, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5, $6, $7);
+        my ($fuente, $origen, $destino, $fecha, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5, $6, $7, $8);
         $importe  =~ s/,/./;
         return (
             'fuente'      => $fuente,
