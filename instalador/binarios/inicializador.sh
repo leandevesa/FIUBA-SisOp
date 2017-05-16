@@ -80,16 +80,16 @@ verificarPermisos() {
     permiso=0
 
     for script in $(ls $DIRMAE); do
-        chmod +x "$script"
+        chmod +x "$DIRMAE/$script"
 
-        if [[ ! -x "$script" ]]; then
+        if [[ ! -x "$DIRMAE/$script" ]]; then
             let permiso+=1
         fi
     done
 
     for file in $(ls $DIRMAE); do
-        chmod u=rx "$file"
-        if [[ ! -r "$file" ]]; then
+        chmod u=rx "$DIRMAE/$file"
+        if [[ ! -r "$DIRMAE/$file" ]]; then
             let permiso+=1
         fi
     done
