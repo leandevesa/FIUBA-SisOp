@@ -24,8 +24,6 @@ use Data::Dumper;
 
 Getopt::Long::Configure("pass_through");
 
-# TODO: usar el PATH correcto desde las variables de entorno!!!
-our $DIR_TRANSFER = "test/transacciones";
 
 # expresion regular para validar fechas en la entrada
 our $RE_FECHA = q/\d{8}/;
@@ -319,8 +317,9 @@ sub codigo2entidad($) {
 sub listar_archivos_fuente {
     my $filtros = shift;
 
-    opendir( DIR, $DIR_TRANSFER );
-    my @archivos = grep(/${RE_FECHA}.txt/,readdir(DIR));
+    my $dir = $ENV{'DIRPROC'};
+    opendir( DIR, $dir ) or die "Directorio inválido: $dir\n";
+    my @archivos = grep(/${RE_FECHA}.txt/,readdir(DIR)) or die "No se pudo leer el directorio $dir\n";
     closedir( DIR );
 
     my @filtrados;
@@ -335,7 +334,7 @@ sub listar_archivos_fuente {
             }
         }
         # todos los filtros pasaron
-        push @filtrados, $archivo;
+        push @filtrados, $dir . "/" . $archivo;
     }
 
     return sort @filtrados;
@@ -348,7 +347,7 @@ sub listar_archivos_fuente {
 sub parsear_transaccion {
     my $linea = $_[0];
 
-    if( $linea =~ /^(${RE_FECHA});.*?;(\d{3});.*?;(\d{3});${RE_FECHA};(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
+    if( $linea =~ /^(${RE_FECHA})\.txt;.*?;(\d{3});.*?;(\d{3});${RE_FECHA};(${RE_MONTO});(${RE_ESTADO});(${RE_CBU});(${RE_CBU})$/i ) {
         # las variables de los matches se tienen que copiar a variables locales o sino se pierden
         # cuando se sale del scope
         my ($fecha, $origen, $destino, $importe, $estado, $cbu_origen, $cbu_destino) = ($1, $2, $3, $4, $5, $6, $7);
@@ -427,7 +426,7 @@ sub listado {
     foreach my $archivo (@archivos) {
         my $subtotal = 0;
 
-        open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
+        open my $fp, $archivo or die "No se pudo abrir $archivo: $!\n";
 
         # la subrutina acumula los montos en el total e imprime las transacciones
         iterar_archivo $fp, $filtros, sub {
@@ -444,7 +443,7 @@ sub listado {
                                       };
 
         if( $subtotal != 0 ) {
-            my ($dia) = $archivo =~ /^\d{6}0?(\d{1,2}).txt/;
+            my ($dia) = $archivo =~ /\d{6}0?(\d{1,2}).txt$/;
             print "subtotal del día $dia,$subtotal\n";
             if( $detalle ) { print "\n"; }
         }
@@ -536,7 +535,7 @@ sub ranking {
     my @archivos = @{$fuentes};
 
     foreach my $archivo (@archivos) {
-        open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
+        open my $fp, $archivo or die "No se pudo abrir $archivo: $!\n";
 
         # la subrutina acumula los montos ingresados y emitidos para cada entidad
         iterar_archivo $fp, $filtros, sub {
@@ -605,7 +604,7 @@ sub balance {
 
     # recorre los archivos y las transacciones
     foreach my $archivo (@archivos) {
-        open my $fp, "$DIR_TRANSFER/$archivo" or die "No se pudo abrir $archivo: $!\n";
+        open my $fp, $archivo or die "No se pudo abrir $archivo: $!\n";
 
         # la subrutina acumula el balance para cada entidad
         iterar_archivo $fp, \@filtros, sub {
@@ -693,7 +692,6 @@ sub balance_por_entidad {
     ) or die "Utilice ./consultas.pl help balance-entidad para obtener ayuda.\n";
 
     my ($filtros, $fuentes) = @_;
-    my @archivos = @{$fuentes};
 
     if( scalar @entidades == 0 ) {
         @entidades = keys %CODIGOS;
@@ -701,7 +699,7 @@ sub balance_por_entidad {
 
     # imprime el resultado por cada entidad
     for my $entidad (sort @entidades) {
-        my ($ingresos, $egresos) = balance $filtros, $detalle, $entidad, keys %CODIGOS;
+        my ($ingresos, $egresos) = balance $filtros, $fuentes, $detalle, $entidad, keys %CODIGOS;
 
         my $ingreso = reduce { $a + $b } values %{$ingresos};
         my $egreso = reduce { $a + $b } values %{$egresos};
