@@ -480,6 +480,12 @@ sub listado_cbu {
     # ejecuta el listado
     print "Transferencias de la cuenta $cbu\n\n";
 
+    if( $detalle ) {
+        print "FECHA,IMPORTE,ESTADO,ORIGEN,DESTINO\n";
+    } else {
+        print "FECHA,IMPORTE\n";
+    }
+
     my ($ingresos, $egresos) = (0, 0);
     foreach my $archivo (@{$fuentes}) {
         my $subtotal = 0;
