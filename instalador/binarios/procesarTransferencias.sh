@@ -133,7 +133,7 @@ validarImportesSegunEstado(){
 	# si el total de registrios del archivos no coincide con la suma de la cantidad de registros
 	# de cada estado. entonces hay algun registro invalido, se rechaza el archivo.
 	if ! [ $registrosTotalesLeidos -eq $regTotalesEnArchivo ]; then
-		error "archivo rechazado por estado invalido"
+		echo "archivo rechazado por estado invalido"
 		return 1
 	fi
 
@@ -217,13 +217,13 @@ convertirYEscribirSalida(){
 procesarArchivo(){
 	archivo=$1
 	#		$DIRINFO/transfer
-	print "Procesando Archivo: $archivo"
+	echo estoy procesando el archivo. $archivo
 	#saco la cabecera del archivo
 	registros=`cat $DIROK/$archivo | sed -e 1'd'`
 	for reg in $registros; do
 		convertirYEscribirSalida "$reg" "$archivo"
 	done
-	print "Fin proceso"
+	echo termine de procesar
 
 }
 validarFecha(){
@@ -253,10 +253,12 @@ validarFecha(){
 
 	dif=$(($(($(date -d "$aniof2$mesf2$diaf2" "+%s") - $(date -d "$anio$mes$dia" "+%s"))) / 86400))
 	if [ $dif -lt 0 ]; then
+		echo la fecha $1 - $2 es menor a cero  
 		return 1 
 	fi
 	#no tiene que tener mas de 7 dias de antiguedad con respecto a la fecha del archivo.
 	if [ $dif -gt 7 ]; then
+		echo la fecha $1 - $2 es mayor a 7
 		return 1
 	fi
 	return 0
@@ -276,20 +278,21 @@ validarCampos(){
 	montoTotalInformado=`cat "$DIROK/$archivo" | sed 1'!d' | sed "s/^[^;]*;//" | sed "s/,/./g"`
 	if [ -z $montoTotalInformado ]; then
 		#log
-		error "Error de formato en registro nro 1 (cabecera)"
+		echo "Error de formato en registro nro 1 (cabecera)"
+		rechazarArchivo "$archivo"
 		return
 	fi
 
 	montoTotal=`calcularMontoTotal "$archivo"`
 
 	if ! [ $montoTotal = $montoTotalInformado ]; then
-		error "El monto total es diferente al monto informado"
+		echo rechazar montoTotal distinto montoTotalInformado
 		rechazarArchivo "$archivo"
 		return
 	fi
 
 	if ! validarImportesSegunEstado $archivo ; then
-		error "Se rechaza el archivo porque el importe informdao es invalido."
+		echo rechazar importe invalido segun estado.
 		rechazarArchivo "$archivo"
 		return
 	fi
@@ -316,15 +319,23 @@ verificarEstructura(){
 	# NO ES IMPORTANTE POR QUE ES ESTA ETAPA YA VIENE VALIDADO QUE EL ARCHIVO NO ESTE VACIO
 	cabecera=`cat "$DIROK/$archivo" | sed -e 1'!d' | grep "^.*;.*$"`
 	cantidadDeRegistros=`cat "$DIROK/$archivo" | sed -e 1'd' | wc -l`
-	cantidadDeRegInformada=`cat "$DIROK/$archivo" | sed -e 1'd' | grep "^.*;.*;.*;.*;.*$" | wc -l`	
-	
+	cantidadDeRegistrosValida=`cat "$DIROK/$archivo" | sed -e 1'd' | grep "^.*;.*;.*;.*;.*$" | wc -l`	
+	cantidadDeRegInformada=`echo "$cabecera" | cut -d';' -f1`	
+
 	if [ -z $cabecera ]; then
 		error "Formato de cabecera invalido del archivo $archivo."
+		rechazarArchivo "$archivo"
 		return 1
 	fi
 
 	if ! [ $cantidadDeRegistros -eq $cantidadDeRegInformada ]; then
 		error "Cantidad de registros: leidos: $cantidadDeRegistros Cantidad informada: $cantidadDeRegInformada"
+		rechazarArchivo "$archivo"
+		return 1
+	fi
+	if ! [ $cantidadDeRegistros -eq $cantidadDeRegInformada ]; then
+		error "Cantidad de registros: leidos: $cantidadDeRegistros Cantidad informada: $cantidadDeRegInformada"
+		rechazarArchivo "$archivo"
 		return 1
 	fi
 	validarCampos $archivo
@@ -344,7 +355,7 @@ procesarArchivos(){
 		if fueProcesado "$archivo" ; then
 			#log
 			print "El archivo $archivo ya fue procesadodo."
-			rechazarArchivo "$archivo" "El archivo ya fue procesado."
+			rechazarArchivo "$archivo"
 		else
 			verificarEstructura "$archivo"
 		fi

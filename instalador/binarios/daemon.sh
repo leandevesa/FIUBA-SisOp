@@ -243,8 +243,8 @@ while [ $continuar -eq 0 ]; do
 	contadorCiclos=$((contadorCiclos + 1))
 	# faltaria grabarlo en el log
     verificarDirectorioNovedades
-
    	verificarDirectorioAceptados
+   	print "Demonio ciclo numero: $conadorCiclos"
     #ver
     sleep 1
 done
