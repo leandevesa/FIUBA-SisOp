@@ -920,6 +920,9 @@ if( $salida ) {
     }
 }
 
+# imprime los fuentes que va a utilizar
+print join( ',', map { $_ =~ s/.*\///r } @archivos ) . "\n";
+
 # ejecuta el subcomando y se le pasan los filtros gobales
 $cb->( \@filtros, \@archivos );
 
