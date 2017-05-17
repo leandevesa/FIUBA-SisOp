@@ -469,15 +469,74 @@ sub listado_cbu {
         die "El CBU ingresado no es válido\n";
     }
 
-    my @filtros = @{$_[0]};
+    my @filtros_origen = @{$_[0]};
+    my @filtros_destino = @{$_[0]};
     my $fuentes = $_[1];
 
     # agrega el filtro por CBU
-    push @filtros, crear_filtro_or( crear_filtro_origen( $cbu ), crear_filtro_destino( $cbu ) );
+    push @filtros_origen, crear_filtro_origen( $cbu );
+    push @filtros_destino, crear_filtro_destino( $cbu );
 
     # ejecuta el listado
     print "Transferencias de la cuenta $cbu\n\n";
-    listado \@filtros, $fuentes, $detalle;
+
+    my ($ingresos, $egresos) = (0, 0);
+    foreach my $archivo (@{$fuentes}) {
+        my $subtotal = 0;
+        my $fp;
+
+        open $fp, $archivo or die "No se pudo abrir $archivo: $!\n";
+
+        # la subrutina acumula los montos en el total e imprime las transacciones
+        iterar_archivo $fp, \@filtros_origen, sub {
+                                          my %data = %{$_[0]};
+                                          if( $detalle ) {
+                                              print join( ',', $data{'fecha'},
+                                                               $data{'importe'},
+                                                               $data{'estado'},
+                                                               $data{'cbu_origen'},
+                                                               $data{'cbu_destino'} ) . "\n";
+                                          }
+                                          $subtotal += $data{'importe'};
+                                      };
+        close $fp;
+
+        if( $subtotal != 0 ) {
+            my ($dia) = $archivo =~ /\d{6}0?(\d{1,2}).txt$/;
+            print "subtotal del día $dia,$subtotal\n";
+            if( $detalle ) { print "\n"; }
+            $egresos += $subtotal;
+        }
+
+
+        open $fp, $archivo or die "No se pudo abrir $archivo: $!\n";
+
+        # la subrutina acumula los montos en el total e imprime las transacciones
+        $subtotal = 0;
+        iterar_archivo $fp, \@filtros_destino, sub {
+                                          my %data = %{$_[0]};
+                                          if( $detalle ) {
+                                              print join( ',', $data{'fecha'},
+                                                               $data{'importe'},
+                                                               $data{'estado'},
+                                                               $data{'cbu_origen'},
+                                                               $data{'cbu_destino'} ) . "\n";
+                                          }
+                                          $subtotal += $data{'importe'};
+                                      };
+        close $fp;
+
+        if( $subtotal != 0 ) {
+            my ($dia) = $archivo =~ /\d{6}0?(\d{1,2}).txt$/;
+            print "subtotal del día $dia,$subtotal\n";
+            if( $detalle ) { print "\n"; }
+            $ingresos += $subtotal;
+        }
+    }
+
+    my $balance = $ingresos - $egresos;
+    my $signo = ('NEUTRO', 'POSITIVO', 'NEGATIVO')[$balance <=> 0];
+    print "Balance $signo,$balance,para $cbu\n\n";
 }
 
 sub listado_origen {
