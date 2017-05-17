@@ -123,6 +123,11 @@ detener_daemon()
 
     print 'demonio detenido'
     rm $ARCHIVO_PID
+
+    #fix para procesadorTransferencias.
+    if [ -f $DIRBIN/pid_proc ]; then
+        rm $DIRBIN/pid_proc
+    fi
 }
 
 # chequeo variables
