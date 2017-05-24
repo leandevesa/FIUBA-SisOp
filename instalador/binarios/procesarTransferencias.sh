@@ -279,19 +279,21 @@ validarCampos(){
 	if [ -z $montoTotalInformado ]; then
 		#log
 		echo "Error de formato en registro nro 1 (cabecera)"
-		rechazarArchivo "$archivo"
+		rechazarArchivo $archivo
 		return
 	fi
 
 	montoTotal=`calcularMontoTotal "$archivo"`
 
 	if ! [ $montoTotal = $montoTotalInformado ]; then
+		#completar que se escriba en log
 		echo rechazar montoTotal distinto montoTotalInformado
 		rechazarArchivo "$archivo"
 		return
 	fi
 
 	if ! validarImportesSegunEstado $archivo ; then
+		#completar que se escriba en log
 		echo rechazar importe invalido segun estado.
 		rechazarArchivo "$archivo"
 		return
@@ -321,6 +323,10 @@ verificarEstructura(){
 	cantidadDeRegistros=`cat "$DIROK/$archivo" | sed -e 1'd' | wc -l`
 	cantidadDeRegistrosValida=`cat "$DIROK/$archivo" | sed -e 1'd' | grep "^.*;.*;.*;.*;.*$" | wc -l`	
 	cantidadDeRegInformada=`echo "$cabecera" | cut -d';' -f1`	
+	
+	print "$cabecera"
+	print "$cantidadDeRegistrosValida"
+	print "$cantidadDeRegInformada"
 
 	if [ -z $cabecera ]; then
 		error "Formato de cabecera invalido del archivo $archivo."
@@ -367,6 +373,3 @@ procesarArchivos(){
 set -e
 verificarDirectorios
 procesarArchivos
-if [ -f "$DIRBIN/pid_proc" ]; then
-	rm "$DIRBIN/pid_proc"
-fi

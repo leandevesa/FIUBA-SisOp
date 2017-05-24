@@ -112,19 +112,27 @@ validarArchivo(){
 
 	directorioDestino=$directorioAceptados
 
+	#Verifica que sea un archivo regular.
+	#Aca deberia ir la solucion que nos de el 
+	#profesor para archivos .zip, .mov, corruptos etc.
+	#ya que con -f todos estos nombrados pasan.
+	if [ ! -f "$directorioNovedades/$1" ]; then
+		error "Archivo no regular: $1"
+		directorioDestino=$directorioRechazados
+	fi
+
 	if ! [ $extensionArchivo = "csv" ]; then
-		print "error! archivo con extension invalida $1"
+		error "Archivo con extension invalida: $1"
 		directorioDestino=$directorioRechazados
 	fi
 
 	if ! validarNombreArchivo $nombreArchivo; then
-		#print "error! archivo con nombre invalido $1"
 		directorioDestino=$directorioRechazados
 	fi
 
 	#si el archivo esta vacio lo rechazo directamente
 	if [ ! -s "$directorioNovedades/$1" ]; then
-		print "error! archivo vacio $1"
+		error "Archivo vacio: $1"
 		directorioDestino=$directorioRechazados
 	fi
 
@@ -173,67 +181,39 @@ verificarDirectorioNovedades(){
 }
 
 procesadorActivo(){
-    if [ -f $ARCHIVO_PID_PROC ] ; then
-        return 0
-    else
-        return 1
+    p_s=$(ps)
+    estaCorriendo=$(echo $p_s | grep "procesarTransferencias.sh")
+    if [ -z  "$estaCorriendo" ]; then
+    	return 1;
     fi
+    return 0;
 }
+
 verificarDirectorioAceptados(){
 	nombre=procesarTransferencias.sh
 		
-		# verifica si el procesador ya está corriendo
-	    if procesadorActivo ; then
-			print "El proceso ya se encuentra en ejecucion, invocacion propuesta para la siguiente iteracion"
-			return
-		fi
-
-		script="$DIRBIN/$nombre"
-
-	    set +e
-
-	    # inicia el proceso en background
-	    nohup $script &> /dev/null &
-	    if [ ! $! ] ; then
-	        error 'No se pudo inicializar el procesador'
-	    else
-	    	set -e
-
-	    	# obtiene y guarda el process ID
-	    	pid=$!
-	    	echo $pid > $ARCHIVO_PID_PROC
-
-	    	print "se inició el procesador con el pid $pid"
-	    fi
-	    set -e
-	#fi
-	#cantidadDeArhivos=`ls "$DIROK" | wc -l`
-	#$DIRBIN/$nombre &
-	#nombre=procesarTransferencias.sh
-	#if ! [ -z `pidof -x $nombre` ]; then
-		#log
-	#	echo "El proceso ya se encuentra en ejecucion, invocacion propuesta para la siguiente iteracion"
-	#	return
-	#fi
-
-	#if [ -f "$DIRBIN/$nombre" ]; then
-		#log
-	#	$DIRBIN/$nombre &
-		#a veces anda a veces no. preguntar.
-	#	echo "proceso procesarTransferencias.sh lanzado con pid" `pidof -x $DIRBIN/$nombre`
-	#else
-	#	echo "No se encuentra el ejecutable en $DIRBIN"
-	#fi
-	#return 0
+	# verifica si el procesador ya está corriendo
+    if procesadorActivo ; then
+		print "El proceso ya se encuentra en ejecucion, invocacion propuesta para la siguiente iteracion"
+		return
+	fi
+	script="$DIRBIN/$nombre"
+    set +e
+    # inicia el proceso en background
+    nohup $script &> /dev/null &
+    if [ ! $! ] ; then
+        error 'No se pudo inicializar el procesador'
+    else
+    	set -e
+    	# obtiene y guarda el process ID
+    	pid=$!
+    	#echo $pid > $ARCHIVO_PID_PROC
+    	print "se inició el procesador con el pid $pid"
+    fi
+    set -e
 }
 
-#para probar, se sale el demonio despues de esto
-ver(){
-	pid=`pidof aaa`
-	echo $pid
-}
-
-#trap "eval continuar=1" SIGINT SIGTERM
+trap "eval continuar=1" SIGINT SIGTERM
 
 print "Daemon iniciado OK"
 
@@ -244,7 +224,6 @@ while [ $continuar -eq 0 ]; do
 	# faltaria grabarlo en el log
     verificarDirectorioNovedades
    	verificarDirectorioAceptados
-   	print "Demonio ciclo numero: $conadorCiclos"
-    #ver
-    sleep 1
+   	print "Demonio ciclo numero: $contadorCiclos"
+    sleep 5
 done
