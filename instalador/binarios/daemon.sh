@@ -121,6 +121,12 @@ validarArchivo(){
 		directorioDestino=$directorioRechazados
 	fi
 
+	#asi soluciono lo anterior.
+	if [ -z $(file "$directorioNovedades/$1" | grep "text") ]; then
+		error "Archivo no regular: $1"
+		directorioDestino=$directorioRechazados
+	fi
+
 	if ! [ $extensionArchivo = "csv" ]; then
 		error "Archivo con extension invalida: $1"
 		directorioDestino=$directorioRechazados
