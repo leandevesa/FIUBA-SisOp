@@ -257,10 +257,9 @@ validarFecha(){
 	mesf2=`echo $2 | sed "s/^....\(..\).*/\1/"`
 	diaf2=`echo $2 | sed "s/^......//"`
 
-
 	dif=$(($(($(date -d "$aniof2$mesf2$diaf2" "+%s") - $(date -d "$anio$mes$dia" "+%s"))) / 86400))
 	if [ $dif -lt 0 ]; then
-		error "Archivo: $archivo la fecha del archivo es mayor a la fecha del registro."  
+		error "Archivo: $archivo la fecha del registro es mayor a la fecha del nombre del archivo."  
 		return 1 
 	fi
 	#no tiene que tener mas de 7 dias de antiguedad con respecto a la fecha del archivo.
@@ -275,7 +274,7 @@ validarFechasRegistros(){
 	fechaArchivo=`echo $archivo |sed "s/^[^_]*_//" | cut -d'.' -f1`
 	fechas=`cat "$DIROK/$archivo" | sed -e 1'd' | cut -d';' -f1`
 	for fecha in $fechas; do
-		if [ ! validarFecha "$fecha" "$fechaArchivo" "$archivo" ]; then
+		if ! validarFecha "$fecha" "$fechaArchivo" "$archivo" ; then
 			return 1
 		fi
 	done
