@@ -54,6 +54,6 @@ if __name__ == '__main__':
                 importe = gen_importe()
                 estado =  random.choice(['anulada', 'pendiente'])
 
-                fuente = '%s_%s.csv' % (random.choice(BANCOS), fecha)
+                fuente = '%s_%s.csv' % (origen, fecha)
                 transaccion = ';'.join([fuente, origen, cod_origen, destino, cod_dest, fecha, importe, estado, cbu_origen, cbu_destino])
                 fp.write(transaccion + '\n')

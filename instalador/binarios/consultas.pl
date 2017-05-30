@@ -206,12 +206,15 @@ sub crear_filtro_fecha($$) {
 sub crear_filtro_fuente {
     my $fuente = $_[0];
 
-    if( $fuente !~ /^${RE_FECHA}.txt$/ ) {
-        die "Los nombres de fuentes deben tener el formato 'aaaammdd.txt'\n";
+    if( $fuente !~ /^(\w+)_${RE_FECHA}\.csv$/ ) {
+        die "Los nombres de fuentes deben tener el formato '<entidad>_aaaammdd.csv'\n";
+    } elsif( not entidad2codigo( $1 ) ) {
+        die "Entidad inválida en el filtro por fuente $fuente\n";
     }
 
     return sub {
-        return $_[0] eq $fuente;
+        my %data = %{$_[0]};
+        return $data{'fuente'} eq $fuente;
     };
 }
 
@@ -895,12 +898,13 @@ if( $estado ) {
     push @filtros, crear_filtro_estado( $estado );
 }
 
-# crea los filtros para las fuentes
-my @filtros_fuentes;
 if( @fuentes ) {
     # crea un filtro OR con todos los filtros para fuentes y lo mete en la lista final
-    push @filtros_fuentes, factory_filtros_or( \@fuentes, \&crear_filtro_fuente );
+    push @filtros, factory_filtros_or( \@fuentes, \&crear_filtro_fuente );
 }
+
+# crea los filtros para los fuentes
+my @filtros_fuentes;
 if( $fecha_hasta ) {
     push @filtros_fuentes, crear_filtro_fecha( $fecha_hasta, 1 );
 }
@@ -909,9 +913,12 @@ if( $fecha_desde ) {
 }
 
 # obtiene la lista de fuentes
-my @archivos = listar_archivos_fuente \@filtros_fuentes;
-if( scalar @archivos == 0 ) {
-    die "No hay archivos fuentes.\n";
+my @archivos;
+if( $subcomando ne 'help' ) {
+    @archivos = listar_archivos_fuente \@filtros_fuentes;
+    if( scalar @archivos == 0 ) {
+        die "No hay archivos fuentes.\n";
+    }
 }
 
 # redirecciona la salida
@@ -927,7 +934,9 @@ if( $salida ) {
 }
 
 # imprime los fuentes que va a utilizar
-print join( ',', map { $_ =~ s/.*\///r } @archivos ) . "\n";
+if( $subcomando ne 'help' ) {
+    print join( ',', map { $_ =~ s/.*\///r } @archivos ) . "\n";
+}
 
 # ejecuta el subcomando y se le pasan los filtros gobales
 $cb->( \@filtros, \@archivos );
