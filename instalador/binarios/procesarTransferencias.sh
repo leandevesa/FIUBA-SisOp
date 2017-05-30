@@ -133,7 +133,6 @@ validarImportesSegunEstado(){
 	# si el total de registrios del archivos no coincide con la suma de la cantidad de registros
 	# de cada estado. entonces hay algun registro invalido, se rechaza el archivo.
 	if ! [ $registrosTotalesLeidos -eq $regTotalesEnArchivo ]; then
-		echo "archivo rechazado por estado invalido"
 		return 1
 	fi
 
@@ -170,19 +169,24 @@ validarCBU(){
 	for cbu in $listaCBUs ; do 
 		cbuOrigen=`echo "$cbu" | sed "s/^\([^;]*\);.*/\1/"`
 		if ! validarCantidadDigitosCbu $cbuOrigen ; then
+			error "Archivo: $archivo cantidad de digitos CBU invalida"
 			return 1
 		fi
 		cbuDestino=`echo "$cbu" | sed "s/^[^;]*;//"`
 		if ! validarCantidadDigitosCbu $cbuDestino ; then
+			error "Archivo: $archivo cantidad de digitos CBU invalida"
 			return 1
 		fi
 		if ! [ $cbuOrigen = $cbuDestino ]; then
+			error "Archivo: $archivo cbu orgien igual a cbu destino"
 			return 1
 		fi
 		if ! verificarCodigoDeBanco $cbuOrigen ; then
+			error "Archivo: $archivo codigo de banco invalido en CBU"
 			return 1
 		fi
 		if ! verificarCodigoDeBanco $cbuDestino ; then
+			error "Archivo: $archivo codigo de banco invalido en CBU"
 			return 1
 		fi
 	done
@@ -217,18 +221,20 @@ convertirYEscribirSalida(){
 procesarArchivo(){
 	archivo=$1
 	#		$DIRINFO/transfer
-	echo estoy procesando el archivo. $archivo
+	print "procesando archivo: $archivo."
 	#saco la cabecera del archivo
 	registros=`cat $DIROK/$archivo | sed -e 1'd'`
 	for reg in $registros; do
 		convertirYEscribirSalida "$reg" "$archivo"
 	done
-	echo termine de procesar
+	print "El Archivo: $archivo fue proceso correctamente."
 
 }
 validarFecha(){
+	archivo=$3
 	#si es vacia la fecha que me pasan rechazo.
 	if [ -z $1 ]; then
+		error "Archivo: $archivo formato fecha de registro invalida"
 		return 1
 	fi
 	#sea una fecha valida
@@ -243,6 +249,7 @@ validarFecha(){
 	esValida=$?
 	if [ $esValida -eq 1 ]; then 
 		# es invalida
+		error "Archivo: $archivo formato fecha de registro invalida"
 		return 1
 	fi
 
@@ -253,12 +260,12 @@ validarFecha(){
 
 	dif=$(($(($(date -d "$aniof2$mesf2$diaf2" "+%s") - $(date -d "$anio$mes$dia" "+%s"))) / 86400))
 	if [ $dif -lt 0 ]; then
-		echo la fecha $1 - $2 es menor a cero  
+		error "Archivo: $archivo la fecha del archivo es mayor a la fecha del registro."  
 		return 1 
 	fi
 	#no tiene que tener mas de 7 dias de antiguedad con respecto a la fecha del archivo.
 	if [ $dif -gt 7 ]; then
-		echo la fecha $1 - $2 es mayor a 7
+		error "Archivo: $archivo la fecha del registro tiene mas de siete dias de antiguedad."  
 		return 1
 	fi
 	return 0
@@ -268,8 +275,11 @@ validarFechasRegistros(){
 	fechaArchivo=`echo $archivo |sed "s/^[^_]*_//" | cut -d'.' -f1`
 	fechas=`cat "$DIROK/$archivo" | sed -e 1'd' | cut -d';' -f1`
 	for fecha in $fechas; do
-		validarFecha $fecha $fechaArchivo
+		if [ ! validarFecha "$fecha" "$fechaArchivo" "$archivo" ]; then
+			return 1
+		fi
 	done
+	return 0
 }
 
 validarCampos(){
@@ -277,8 +287,7 @@ validarCampos(){
 
 	montoTotalInformado=`cat "$DIROK/$archivo" | sed 1'!d' | sed "s/^[^;]*;//" | sed "s/,/./g"`
 	if [ -z $montoTotalInformado ]; then
-		#log
-		echo "Error de formato en registro nro 1 (cabecera)"
+		error "formato en registro nro 1 (cabecera)"
 		rechazarArchivo $archivo
 		return
 	fi
@@ -286,27 +295,23 @@ validarCampos(){
 	montoTotal=`calcularMontoTotal "$archivo"`
 
 	if ! [ $montoTotal = $montoTotalInformado ]; then
-		#completar que se escriba en log
-		echo rechazar montoTotal distinto montoTotalInformado
+		error "Archivo: $archivo monto total distinto monto total informado"
 		rechazarArchivo "$archivo"
 		return
 	fi
 
 	if ! validarImportesSegunEstado $archivo ; then
-		#completar que se escriba en log
-		echo rechazar importe invalido segun estado.
+		error "Archivo: $archivo importe invalido segun estado."
 		rechazarArchivo "$archivo"
 		return
 	fi
 
 	if ! validarCBU $archivo ; then
-		error "Registro con CBU invalido en $archivo"
 		rechazarArchivo "$archivo"
 		return
 	fi
 
 	if ! validarFechasRegistros $archivo; then
-		error "Registro con fecha invalida en $archivo"
 		rechazarArchivo "$archivo"
 		return
 	fi
@@ -358,9 +363,10 @@ procesarArchivos(){
 		if [ $archivo = "duplicados" ]; then
 			continue
 		fi
+		print "archivo leido: $archivo"
 		if fueProcesado "$archivo" ; then
 			#log
-			print "El archivo $archivo ya fue procesadodo."
+			print "El archivo: $archivo ya fue procesadodo."
 			rechazarArchivo "$archivo"
 		else
 			verificarEstructura "$archivo"
