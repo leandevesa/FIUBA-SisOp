@@ -259,12 +259,12 @@ validarFecha(){
 
 	dif=$(($(($(date -d "$anio$mes$dia" "+%s") - $(date -d "$aniof2$mesf2$diaf2" "+%s"))) / 86400))
 	if [ $dif -lt 0 ]; then
-		error "Archivo: $archivo la fecha del registro es antigua que la fecha del nombre del archivo."  
+		error "Archivo: $archivo la fecha del registro es anterior que la fecha del nombre del archivo."  
 		return 1 
 	fi
 	#no tiene que tener mas de 7 dias de antiguedad con respecto a la fecha del archivo.
 	if [ $dif -gt 7 ]; then
-		error "Archivo: $archivo la fecha del registro tiene mas de siete dias que la fecha del archivo."  
+		error "Archivo: $archivo la fecha del registro tiene mas de siete dias de antiguedad que la fecha del archivo."  
 		return 1
 	fi
 	return 0
