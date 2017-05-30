@@ -328,10 +328,6 @@ verificarEstructura(){
 	cantidadDeRegistros=`cat "$DIROK/$archivo" | sed -e 1'd' | wc -l`
 	cantidadDeRegistrosValida=`cat "$DIROK/$archivo" | sed -e 1'd' | grep "^.*;.*;.*;.*;.*$" | wc -l`	
 	cantidadDeRegInformada=`echo "$cabecera" | cut -d';' -f1`	
-	
-	print "$cabecera"
-	print "$cantidadDeRegistrosValida"
-	print "$cantidadDeRegInformada"
 
 	if [ -z $cabecera ]; then
 		error "Formato de cabecera invalido del archivo $archivo."
