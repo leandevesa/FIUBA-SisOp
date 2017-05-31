@@ -59,6 +59,8 @@ moverArchivo(){
 	if [ -f "$destino" ]; then
 		#ya existe un archivo en el destino con este nombre
 		
+		print "Archivo: $archivo duplicado."
+
 		nombreCompleto=`echo $destino | sed "s-^.*/--"`
 		#print "Archivo $nombreCompleto duplicado en $destino."
 		
